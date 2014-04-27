@@ -1,0 +1,78 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+<title>Интерпретатор языка back</title>
+</head>
+
+<body>
+<script src="lexer.js"></script>
+<script src="parser.js"></script>
+<script src="runner.js"></script>
+Исходный текст:<br>
+<textarea id="src" rows="10" cols="80"></textarea><br>
+Входные данные:<br>
+<textarea id="inp" rows="5" cols="80"></textarea>
+<br>
+<input type="button" value="Пуск (текст)" onclick="Run(false)">
+<input type="button" value="Пуск (hex)" onclick="Run(true)">
+<input type="button" value="Стоп" onclick="Stop()">
+<br><br>
+Результат:<br>
+<pre id="log"></pre>
+<script>
+
+var Log = document.getElementById('log')
+var Runner = new ARunner()
+var HexDump = false
+
+function RunnerCallback(Reason, Data) {
+	if (Reason == 'error') {
+		Log.innerHTML += ' error: ' + Data.toString()
+		if (!(Data instanceof ALexerException || Data instanceof ARunnerException)) throw Data
+
+		return false
+	}
+
+	if (HexDump) {
+		var s = []
+		for(var i = 0; i < Data.length; i++) {
+			s.push(Data.charCodeAt(i).toString(16) + ' ')
+		}
+		Data = s.join('')
+	}
+	Log.innerHTML += Data
+	if (Reason == 'stop') Log.innerHTML += '\n- stopped -'
+	return true
+}
+
+function Stop() {
+	if (Runner.IsRunning) {
+		Log.innerHTML += ' stopping '
+		Runner.Stop()
+	}
+}
+
+function Run(Hex) {
+	if (Runner.IsRunning) {
+		alert('Программа уже запущена')
+		return
+	}
+
+	HexDump = Hex
+	try {
+		var Lexer = new ALexer(document.getElementById('src').value)
+		var Parser = new AParser(Lexer)
+		Log.innerHTML = ''
+		Parser.Parse()
+		Runner.Run(Parser.Program, document.getElementById('inp').value, RunnerCallback)
+	}
+	catch(e) {
+		Log.innerHTML += e.toString()
+		if (!(e instanceof ALexerException || e instanceof ARunnerException)) throw e
+	}
+
+	Log.innerHTML += ''
+}
+//</script>
+</body>
+</html>
