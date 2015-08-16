@@ -1,7 +1,7 @@
 function BackLexerException(message, line, pos) {
 	this.line = line
 	this.pos = pos
-	this.message = message = ', line ' + line + ', char ' + pos
+	this.message = message + ', line ' + line + ', char ' + pos
 }
 
 function BackToken(type, data, line) {
@@ -21,7 +21,7 @@ BackToken.prototype.types = {
 
 function BackLexer(source) {
 	this.source = source.replace(/\r\n?/g, '\n') + '\n'
-	this.sourceRe = /\n|\(|\)|\\::|\\.|"|'|(-?[0-9]+|0x[0-9a-fA-F]{1,4})|([^\0- \(\)\\"]+)/g
+	this.sourceRe = /\n|\(|\)|\\::|(\\\\|\\\*)|\\.|"|'|(-?[0-9]+|0x[0-9a-fA-F]{1,4})|([^\0- \(\)\\"]+)/g
 	this.lineNumber = 1
 	this.linePos = 0
 	this.match = null
@@ -31,10 +31,18 @@ BackLexer.prototype.next = function () {
 	var value
 
 	while (true) {
-		this.match = this.sourseRe.exec(this.source)
+		this.match = this.sourceRe.exec(this.source)
 		if (!this.match) return null
 
 		if (this.match[1]) {
+			var tail = (this.match[1] == '\\\\' ? '\n' : '*\\')
+			var tailPos = this.source.indexOf(tail, this.match.index + 2)
+			if (tailPos < 0) {
+
+			}
+		}
+
+		if (this.match[2]) {
 			value = Number(this.match[1])
 			if (value < -32768 || value > 65535) {
 				throw this.newException('number out of range')
@@ -43,7 +51,7 @@ BackLexer.prototype.next = function () {
 			return this.newToken(BackToken.types.number, value)
 		}
 
-		if (this.match[2]) {
+		if (this.match[3]) {
 			value = this.match[2]
 			if (value.charAt(0) != ':') return this.newToken(BackToken.types.name, value)
 			else return this.newToken(BackToken.types.label, value.substr(1))
