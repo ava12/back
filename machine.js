@@ -22,8 +22,8 @@ BackMachine.prototype.opcodes = {
 	st: 5,
 	ins: 6,
 	outs: 7,
-	sh: 8,
-	sa: 9,
+	shl: 8,
+	shr: 9,
 	test: 10,
 	bt: 11,
 	dn: 12,
@@ -206,32 +206,14 @@ BackMachine.prototype.step = function () {
 			}
 		break
 
-		case this.opcodes.sh:
-		case this.opcodes.sa:
-			if (operands < 2) {
-				this.status = this.statuses.operandStackEmpty
-				break
-			}
-
-			length = this.operandStack.pop()
-			if (!length) break
-
-			value = this.operandStack.pop()
-			var right = (length < 0)
-			if (right) length = -length
-			if (length >= 16) value = 0
+		case this.opcodes.shl:
+		case this.opcodes.shr:
+			if (!operands) this.status = this.statuses.operandStackEmpty
 			else {
-				mask = 0
-				if (opcode == this.opcodes.sa) {
-					if (right) {
-						if (value & 0x8000) mask = 0xffff << (16 - length)
-					} else {
-						if (value & 1) mask = 0xffff >> (16 - length)
-					}
-				}
-				value = ((right ? value >> length : value << length) | mask) & 0xffff
+				value = this.operandStack.pop()
+				value = (opcode == this.opcodes.shl ? value << 1 : value >> 1) & 0xffff
+				this.operandStack.push(value)
 			}
-			this.operandStack.push(value)
 		break
 
 		case this.opcodes.test:

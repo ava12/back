@@ -108,11 +108,11 @@ BackParser.prototype.types = {
 BackParser.prototype.opChars = '0123456789jklmno'
 
 BackParser.prototype.emitFunctions = {
-	BackToken.types.name: 'emitNameToken',
-	BackToken.types.number: 'emitNumberToken',
-	BackToken.types.string: 'emitStringToken',
-	BackToken.types.label: 'emitLabelToken',
-	BackToken.types.meta: 'emitMetaToken'
+	name: 'emitNameToken',
+	number: 'emitNumberToken',
+	string: 'emitStringToken',
+	label: 'emitLabelToken',
+	meta: 'emitMetaToken'
 }
 
 BackParser.prototype.meta = {
@@ -243,7 +243,7 @@ BackParser.prototype.emitNameToken = function (token) {
 BackParser.prototype.emitMetaToken = function (token) {
 	if (token.data == this.meta.macro) {
 		this.defineMacro()
-		break
+		return
 	}
 
 	var tokens, value
@@ -343,7 +343,7 @@ BackParser.prototype.defineMacro = function () {
 }
 
 BackParser.prototype.checkUnresolvedNames = function () {
-	var unresolved = []
+//	var unresolved = []
 	
 }
 
