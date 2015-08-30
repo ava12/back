@@ -9,7 +9,7 @@ function BackParserException(message, line, pos) {
 
 function BackProgram(code, debugInfo, breakPoints) {
 	this.code = code // строка
-	this.debugInfo = debugInfo // [[строка, первый_адрес, последний_адрес]]
+	this.debugInfo = debugInfo // [[первый_адрес, последний_адрес, строка]]
 	this.breakPoints = breakPoints // {индекс: адрес}
 }
 
@@ -37,14 +37,14 @@ BackParserQueue.prototype.next = function () {
 		}
 
 		switch (token.type) {
-			case BackToken.types.meta:
+			case BackTokenTypes.meta:
 				if (this.tokenStack.length) {
 					throw new BackParserException('метакоманда внутри скобок', token.line, token.pos)
 				}
 			break
 
-			case BackToken.types.brace:
-				if (this.lastToken && this.lastToken.type == BackToken.types.meta) {
+			case BackTokenTypes.brace:
+				if (this.lastToken && this.lastToken.type == BackTokenTypes.meta) {
 					throw new BackParserException('скобка после метакоманды', token.line, token.pos)
 				}
 
@@ -72,19 +72,19 @@ BackParserQueue.prototype.next = function () {
 
 function BackParser(source) {
 	this.names = {
-		':!!':  [this.types.op, BackMachine.opcodes.hlt],
-		':.':   [this.types.op, BackMachine.opcodes.ret],
-		':^':   [this.types.op, BackMachine.opcodes.call],
-		':^^':  [this.types.op, BackMachine.opcodes.jmp],
-		':@':   [this.types.op, BackMachine.opcodes.ld],
-		':=':   [this.types.op, BackMachine.opcodes.st],
-		':.<':  [this.types.op, BackMachine.opcodes.ins],
-		':.>':  [this.types.op, BackMachine.opcodes.outs],
-		':<<<': [this.types.op, BackMachine.opcodes.sh],
-		':<<':  [this.types.op, BackMachine.opcodes.sa],
-		':?':   [this.types.op, BackMachine.opcodes.test],
-		':??':  [this.types.op, BackMachine.opcodes.bt],
-		':$':   [this.types.op, BackMachine.opcodes.dup]
+		':!!':  [this.types.op, BackMachineOpcodes.hlt],
+		':.':   [this.types.op, BackMachineOpcodes.ret],
+		':^':   [this.types.op, BackMachineOpcodes.call],
+		':^^':  [this.types.op, BackMachineOpcodes.jmp],
+		':@':   [this.types.op, BackMachineOpcodes.ld],
+		':=':   [this.types.op, BackMachineOpcodes.st],
+		':.<':  [this.types.op, BackMachineOpcodes.ins],
+		':.>':  [this.types.op, BackMachineOpcodes.outs],
+		':<<<': [this.types.op, BackMachineOpcodes.sh],
+		':<<':  [this.types.op, BackMachineOpcodes.sa],
+		':?':   [this.types.op, BackMachineOpcodes.test],
+		':??':  [this.types.op, BackMachineOpcodes.bt],
+		':$':   [this.types.op, BackMachineOpcodes.dup]
 	}
 
 	this.lexer = new BackLexer(source)
@@ -152,30 +152,30 @@ BackParser.prototype.emit = function (ops, line) {
 }
 
 BackParser.prototype.emitToken = function (token) {
-		this.emitFunctions[token.type].call(this, token)
+	this[this.emitFunctions[token.type]](token)
 }
 
 BackParser.prototype.emitNumber = function (value, line) {
 	var ops
 	if (value >= 0x8000) value -= 0x10000
 	if (value < 8 && value >= -8) {
-		ops = [BackMachine.opcodes.dn, value & 0xf]
+		ops = [BackMachineOpcodes.dn, value & 0xf]
 	}	else if (value < 128 && value > -128) {
-		ops = [BackMachine.opcodes.db, (value & 0xf0) >> 4, value & 0xf]
+		ops = [BackMachineOpcodes.db, (value & 0xf0) >> 4, value & 0xf]
 	}	else {
-		ops = [BackMachine.opcodes.dw, (value & 0xf000) >> 12, (value & 0xf00) >> 8,
+		ops = [BackMachineOpcodes.dw, (value & 0xf000) >> 12, (value & 0xf00) >> 8,
 			(value & 0xf0) >> 4, value & 0xf]
 	}
 	this.emit(ops, line)
 }
 
 BackParser.prototype.emitNumberToken = function (token) {
-	this.emitNumber(token.data)
+	this.emitNumber(token.data, token.line)
 }
 
 BackParser.prototype.emitStringToken = function (token) {
 	for (var i = token.data.length - 1; i >= 0; i--) {
-		this.emitNumber(token.data.charCodeAt(i))
+		this.emitNumber(token.data.charCodeAt(i), token.line)
 	}
 }
 
@@ -185,7 +185,7 @@ BackParser.prototype.emitLabelToken = function (token) {
 	if (!entry) {
 		if (!this.labels[key]) this.labels[key] = []
 		this.labels[key].push(this.code.length + 1)
-		this.emit([BackMachine.opcodes.dw, 0, 0, 0, 0], token.line)
+		this.emit([BackMachineOpcodes.dw, 0, 0, 0, 0], token.line)
 		return
 	}
 
@@ -212,7 +212,7 @@ BackParser.prototype.emitNameToken = function (token) {
 	if (!entry) {
 		if (!this.subs[key]) this.subs[key] = []
 		this.subs[key].push(this.code.length + 1)
-		this.emit([BackMachine.opcodes.dw, 0, 0, 0, 0, BackMachine.opcodes.hlt], token.line)
+		this.emit([BackMachineOpcodes.dw, 0, 0, 0, 0, BackMachineOpcodes.hlt], token.line)
 		return
 	}
 
@@ -228,7 +228,7 @@ BackParser.prototype.emitNameToken = function (token) {
 		case this.types.func:
 		case this.types.sub:
 			this.emitNumber(entry[1], token.line)
-			var op = (entry[0] == this.types.func ? BackMachine.opcodes.call : BackMachine.opcodes.jmp)
+			var op = (entry[0] == this.types.func ? BackMachineOpcodes.call : BackMachineOpcodes.jmp)
 			this.emit(op, token.line)
 		break
 
@@ -250,21 +250,21 @@ BackParser.prototype.emitMetaToken = function (token) {
 
 	switch (token.data) {
 		case this.meta.breakPoint:
-			tokens = this.fetch(this.types.num)
+			tokens = this.fetch(BackTokenTypes.number)
 			value = tokens[0].data & 15
 			if (!(value in this.breakPoints)) this.breakPoints[value] = this.code.length
 			else throw this.newException('точка останова ' + value + ' уже задана', tokens[0])
 		break
 
 		case this.meta.set:
-			tokens = this.fetch([this.types.name, this.types.num])
+			tokens = this.fetch([BackTokenTypes.name, BackTokenTypes.number])
 			this.setName(tokens[0].data, this.types.num, tokens[1].data, tokens[0])
 		break
 
 		case this.meta.func:
 		case this.meta.sub:
 			var type = (token.data == this.meta.func ? this.types.func : this.types.sub)
-			tokens = this.fetch(this.types.name)
+			tokens = this.fetch(BackTokenTypes.name)
 			this.setName(tokens[0].data, type, this.code.length, tokens[0])
 		break
 
@@ -280,16 +280,17 @@ BackParser.prototype.fetch = function (types) {
 	for (var i = 0; i < types.length; i++) {
 		var token = this.queue.next()
 		if (!token) {
-			throw this.newException('неожиданный конец программы, ожидается ' + BackToken.typeNames[token.type])
+			throw this.newException('неожиданный конец программы, ожидается ' + BackTokenTypeNames[token.type])
 		}
 
 		if (token.type != types[i]) {
-			throw this.newException('ожидается: ' + token.typeNames[types[i]] +
-				', получено: ' + token.typeNames[token.type], token)
+			throw this.newException('ожидается: ' + BackTokenTypeNames[types[i]] +
+				', получено: ' + BackTokenTypeNames[token.type], token)
 		}
 
 		result.push(token)
 	}
+	return result
 }
 
 BackParser.prototype.setName = function (name, type, value, token) {
@@ -300,10 +301,14 @@ BackParser.prototype.setName = function (name, type, value, token) {
 	if (type != this.types.num && type != this.types.func && type != this.types.sub) return
 
 	var patch = [(value & 0xf000) >> 12, (value & 0xf00) >> 8, (value & 0xf0) >> 4, value & 0xf]
+	for (i = 0; i < 4; i++) patch[i] = this.opChars.charAt(patch[i])
 	var addr = this.labels[key]
-	var i
+	var i, j
 	if (addr) {
-		for (i = 0; i < addr.length; i++) this.code.splice(addr[i], 4, patch)
+		for (i = 0; i < addr.length; i++) {
+			for (j = 0; j < 4; j++) this.code[addr[i] + j] = patch[j]
+		}
+		delete this.labels[key]
 	}
 
 	addr = this.subs[key]
@@ -313,12 +318,15 @@ BackParser.prototype.setName = function (name, type, value, token) {
 		throw this.newException('имя ' + name + ' уже используется как вызов или переход на подпрограмму', token)
 	}
 
-	patch.push(type == this.types.func ? BackMachine.opcodes.call : BackMachine.opcodes.jmp)
-	for (i = 0; i < addr.length; i++) this.code.splice(addr[i], 5, patch)
+	patch.push(this.opChars.charAt(type == this.types.func ? BackMachineOpcodes.call : BackMachineOpcodes.jmp))
+	for (i = 0; i < addr.length; i++) {
+		for (j = 0; j < 5; j++) this.code[addr[i] + j] = patch[j]
+	}
+	delete this.subs[key]
 }
 
 BackParser.prototype.defineMacro = function () {
-	var token = this.fetch(this.types.name)
+	var token = this.fetch(BackTokenTypes.name)
 	var name = token.data
 	var macro = []
 	this.setName(name, this.types.macro, macro, token)
@@ -327,13 +335,13 @@ BackParser.prototype.defineMacro = function () {
 		token = this.queue.next()
 		if (!token) throw this.newException('неожиданный конец программы')
 
-		if (token.type == BackToken.types.meta) {
+		if (token.type == BackTokenTypes.meta) {
 			throw this.newException('директивы недопустимы внутри макросов', token)
 		}
 
-		if (token.type == BackToken.types.name) {
+		if (token.type == BackTokenTypes.name) {
 			var entry = this.names[':' + token.data]
-			if (entry && entry[0] == this.types.op && entry[1] == BackMachine.opcodes.ret) {
+			if (entry && entry[0] == this.types.op && entry[1] == BackMachineOpcodes.ret) {
 				break
 			}
 		}
@@ -343,14 +351,39 @@ BackParser.prototype.defineMacro = function () {
 }
 
 BackParser.prototype.checkUnresolvedNames = function () {
-//	var unresolved = []
-	
+	var unresolved = []
+	for (var key in this.labels) {
+		delete this.subs[key]
+		unresolved.push(key.substr(1))
+	}
+	for (key in this.subs) unresolved.push(key.substr(1))
+	if (unresolved.length) {
+		throw new BackParserException('не определены имена: ' + unresolved.join(', '))
+	}
 }
 
 BackParser.prototype.convertCode = function () {
-
+	return this.code.join('')
 }
 
 BackParser.prototype.convertDebugInfo = function () {
+	var result = []
+	for (var line in this.debug) {
+		line = Number(line)
+		if (!line) continue
 
+		var entry = this.debug[line]
+		var index = 0
+		while (index < entry.length) {
+			var first = entry[index]
+			var last = first
+			for (; index++, entry[index] == last + 1; last++);
+			result.push([first, last, line])
+		}
+	}
+
+	result.sort(function (a, b) {
+		return (a[0] - b[0])
+	})
+	return result
 }

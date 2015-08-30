@@ -11,7 +11,7 @@ function BackToken(type, data, line) {
 	this.line = line
 }
 
-BackToken.prototype.types = {
+BackTokenTypes = {
 	name: 'name', // data: имя
 	number: 'number', // data: число
 	string: 'string', // data: строка
@@ -20,7 +20,7 @@ BackToken.prototype.types = {
 	meta: 'meta' // data: команда
 }
 
-BackToken.prototype.typeNames = {
+BackTokenTypeNames = {
 	name: 'имя',
 	number: 'число',
 	string: 'строка',
@@ -58,13 +58,13 @@ BackLexer.prototype.next = function () {
 				throw this.newException('неверное значение числа')
 			}
 
-			return this.newToken(BackToken.types.number, value & 0xffff)
+			return this.newToken(BackTokenTypes.number, value & 0xffff)
 		}
 
 		if (this.match[3]) {
 			value = this.match[3]
-			if (value.charAt(0) != ':') return this.newToken(BackToken.types.name, value)
-			else return this.newToken(BackToken.types.label, value.substr(1))
+			if (value.charAt(0) != ':') return this.newToken(BackTokenTypes.name, value)
+			else return this.newToken(BackTokenTypes.label, value.substr(1))
 		}
 
 		value = this.match[0]
@@ -76,14 +76,14 @@ BackLexer.prototype.next = function () {
 
 			case '(':
 			case ')':
-				return this.newToken(BackToken.types.brace, value)
+				return this.newToken(BackTokenTypes.brace, value)
 
 			case '"':
 			case "'":
 				return this.stringToken(value)
 
 			default:
-				return this.newToken(BackToken.types.meta, value)
+				return this.newToken(BackTokenTypes.meta, value)
 		}
 	}
 }
@@ -127,5 +127,5 @@ BackLexer.prototype.stringToken = function (quote) {
 		fragmentPos += fragment.length + 2
 	}
 
-	return new BackToken(BackToken.types.string, text, line)
+	return new BackToken(BackTokenTypes.string, text, line)
 }

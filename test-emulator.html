@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf8">
+<script src="machine.js"></script>
+<script src="lexer.js"></script>
+<script src="parser.js"></script>
+
+<style>
+#dashboard { float: right; }
+</style>
+
+</head>
+<body>
+<div id="dashboard">
+<input type="button" value="Вывод" onclick="selectText(2)">
+<input type="button" value="Вывод" onclick="selectText(1)">
+<input type="button" value="Программа" onclick="selectText(0)">
+</div>
+
+<div id="displays">
+<textarea id="text" cols="80" rows="20"></textarea>
+
+<div class="display">Останов: <input type="checkbox" onclick="setBp(this.checked)">
+<div id="bp">
+</div>
+</div>
+
+<div class="display">Память:<br><input id="addr" type="button" value="0000"><div id="ram"></div></div>
+<div class="display">Вызовы:<br><div id="call"></div></div>
+<div class="display">Операнды:<br><div id="op"></div></div>
+</div>
+<div>
+Адрес: <span class="hex control" id="ip" onclick="setIp()">0000</span>
+Код: <span class="hex" id="code"></span>
+Шаг: <input id="step" type="checkbox">
+<input id="run" type="button" value="Пуск" onclick="run()">
+</div>
+</body>
+</html>

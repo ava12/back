@@ -13,7 +13,7 @@ function BackMachine(input, output, program) {
 	this.breakPointIndex = {}
 }
 
-BackMachine.prototype.opcodes = {
+BackMachineOpcodes = {
 	hlt: 0,
 	ret: 1,
 	call: 2,
@@ -32,7 +32,7 @@ BackMachine.prototype.opcodes = {
 	dup: 15
 }
 
-BackMachine.prototype.statuses = {
+BackMachineStatuses = {
 	manual: 0,
 	halt: 1,
 

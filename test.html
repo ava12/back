@@ -2,17 +2,22 @@
 <html>
 <head>
 <meta charset="utf8">
+<script src="machine.js"></script>
 <script src="lexer.js"></script>
 <script src="parser.js"></script>
 </head>
 <body>
-<textarea id="input" rows="10" cols="80" style="display:inline-block"></textarea>
+<textarea id="input" rows="10" cols="80" style="display:inline-block">main
+\: & \\(a, b) (a&b)
+  1 = 0 = 0 0 @ 1 @ ?? .
+\:: main
+</textarea>
 <div style="display:inline-block">
 <input type="button" value="Лексер" onclick="testLexer()"><br><br>
 <input type="button" value="Очередь" onclick="testQueue()"><br><br>
 <input type="button" value="Транслятор" onclick="testParser()">
 </div>
-<div id="output" style="max-height:20em;overflow:auto"></div>
+<div id="output" style="max-height:20em;overflow:auto;font-family:monospace"></div>
 
 <script>
 var inp = document.getElementById('input')
@@ -50,6 +55,36 @@ function testQueue() {
 	}
 	out.innerHTML = log
 }
+
+function testParser() {
+	var parser = new BackParser(inp.value)
+	out.innerHTML = ''
+	var program
+	try {
+		program = parser.parse()
+		console.log(program)
+	} catch (e) {
+		console.log(e)
+		out.innerHTML = '{' + e.message + '}'
+		return
+	}
+
+	var log = ['code: ' + program.code]
+	var breakPoints = []
+	for (var i = 0; i < 16; i++) {
+		if (i in program.breakPoints) breakPoints.push('' + i + ': ' + program.breakPoints[i])
+	}
+	log.push('break points: ' + breakPoints.join(', '))
+	log.push('debug info: ')
+	for (i = 0; i < program.debugInfo.length; i++) {
+		var entry = program.debugInfo[i]
+		log.push('' + entry[2] + ': ' + entry[0] + ' - ' + entry[1])
+	}
+
+	out.innerHTML = log.join('<br>\r\n')
+}
+
+out.innerHTML = 'ready'
 
 </script>
 </body>
