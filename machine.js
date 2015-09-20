@@ -126,6 +126,7 @@ BackMachine.prototype.setMemory = function (address, values) {
 }
 
 BackMachine.prototype.getProgram = function (address, length) {
+	address &= 65535
 	var nextAddr = address + length
 	if (nextAddr > 65536) return (
 		this.getProgram(address, 65536 - address) +
@@ -170,17 +171,18 @@ BackMachine.prototype.setOutput = function (output) {
 }
 
 BackMachine.prototype.step = function () {
-	this.status = this.statuses.manual
+	this.status = BackMachineStatuses.manual
 	this.events = 0
 	this.eventAddress = null
 	var opcode = this.program.charCodeAt(this.ip) & 15
+	this.ip = (this.ip + 1) & 65535
 	var operands = this.operandStack.length
 	var calls = this.callStack.length
 	var address, value, length, value2, mask
 
 	switch (opcode) {
 		case BackMachineOpcodes.hlt:
-			this.status = this.statuses.halt
+			this.status = BackMachineStatuses.halt
 		break
 
 		case BackMachineOpcodes.ret:
@@ -188,16 +190,16 @@ BackMachine.prototype.step = function () {
 				this.ip = this.callStack.pop()
 				this.events |= BackMachineEvents.callStack
 			}
-			else this.status = this.statuses.callStackEmpty
+			else this.status = BackMachineStatuses.callStackEmpty
 		break
 
 		case BackMachineOpcodes.call:
 			if (calls >= 255) {
-				this.status = this.statuses.callStackFull
+				this.status = BackMachineStatuses.callStackFull
 				break
 			}
 		case BackMachineOpcodes.jmp:
-			if (!operands) this.status = this.statuses.operandStackEmpty
+			if (!operands) this.status = BackMachineStatuses.operandStackEmpty
 			else {
 				if (opcode == BackMachineOpcodes.call) {
 					this.callStack.push(this.ip)
@@ -210,7 +212,7 @@ BackMachine.prototype.step = function () {
 
 
 		case BackMachineOpcodes.ld:
-			if (!operands) this.status = this.statuses.operandStackEmpty
+			if (!operands) this.status = BackMachineStatuses.operandStackEmpty
 			else {
 				address = this.operandStack.pop()
 				this.operandStack.push(this.getMemory(address))
@@ -220,7 +222,7 @@ BackMachine.prototype.step = function () {
 		break
 
 		case BackMachineOpcodes.st:
-			if (operands < 2) this.status = this.statuses.operandStackEmpty
+			if (operands < 2) this.status = BackMachineStatuses.operandStackEmpty
 			else {
 				address = this.operandStack.pop()
 				value = this.operandStack.pop()
@@ -231,10 +233,10 @@ BackMachine.prototype.step = function () {
 		break
 
 		case BackMachineOpcodes.ins:
-			if (operands >= 255) this.status = this.statuses.operandStackFull
+			if (operands >= 255) this.status = BackMachineStatuses.operandStackFull
 			else {
 				value = this.input.read()
-				if (value == undefined) this.status = this.statuses.input
+				if (value == undefined) this.status = BackMachineStatuses.input
 				else {
 					this.operandStack.push(Number(value) || 0)
 					this.events |= (BackMachineEvents.opStack | BackMachineEvents.input)
@@ -243,21 +245,21 @@ BackMachine.prototype.step = function () {
 		break
 
 		case BackMachineOpcodes.outs:
-			if (!operands) this.status = this.statuses.operandStackEmpty
+			if (!operands) this.status = BackMachineStatuses.operandStackEmpty
 			else {
 				value = this.operandStack.pop()
 				if (this.output.write(value)) {
 					this.events |= (BackMachineEvents.opStack | BackMachineEvents.output)
 				} else {
 					this.operandStack.push(value)
-					this.status = this.statuses.output
+					this.status = BackMachineStatuses.output
 				}
 			}
 		break
 
 		case BackMachineOpcodes.shl:
 		case BackMachineOpcodes.shr:
-			if (!operands) this.status = this.statuses.operandStackEmpty
+			if (!operands) this.status = BackMachineStatuses.operandStackEmpty
 			else {
 				value = this.operandStack.pop()
 				value = (opcode == BackMachineOpcodes.shl ? value << 1 : value >> 1) & 0xffff
@@ -268,12 +270,12 @@ BackMachine.prototype.step = function () {
 
 		case BackMachineOpcodes.test:
 		case BackMachineOpcodes.bt:
-			if (operands < 3) this.status = this.statuses.operandStackEmpty
+			if (operands < 3) this.status = BackMachineStatuses.operandStackEmpty
 			else {
 				mask = this.operandStack.pop()
 				value2 = this.operandStack.pop()
 				value = this.operandStack.pop()
-				if (operand == this.operands.test) value = (mask ? value2 : value)
+				if (opcode == BackMachineOpcodes.test) value = (mask ? value2 : value)
 				else value = (value2 & mask) | (value & (~mask))
 				this.operandStack.push(value)
 				this.events |= BackMachineEvents.opStack
@@ -284,15 +286,15 @@ BackMachine.prototype.step = function () {
 		case BackMachineOpcodes.db:
 		case BackMachineOpcodes.dw:
 			if (operands >= 255) {
-				this.status = this.statuses.operandStackFull
+				this.status = BackMachineStatuses.operandStackFull
 				break
 			}
 
 			length = 1 << (opcode & 3)
 			value = 0
 			for (var i = 0; i < length; i++) {
-				this.ip = (this.ip + 1) & 0xffff
 				value = (value << 4) | (this.program.charCodeAt(this.ip) & 15)
+				this.ip = (this.ip + 1) & 0xffff
 			}
 			length <<= 2
 			mask = 1 << (length - 1)
@@ -302,19 +304,20 @@ BackMachine.prototype.step = function () {
 		break
 
 		case BackMachineOpcodes.dup:
-			if (opcodes >= 255) this.status = this.statuses.operandStackFull
+			if (operands >= 255) this.status = BackMachineStatuses.operandStackFull
 			else {
-				this.operandStack.push(opcodes ? this.operandStack[opcodes - 1] : 0)
+				this.operandStack.push(operands ? this.operandStack[operands - 1] : 0)
 				this.events |= BackMachineEvents.opStack
 			}
 		break
 	}
 
-	if (this.status < this.statuses.breakPoint) {
-		this.ip = (this.ip + 1) & 0xffff
-		if (this.status == this.statuses.manual && this.ip in this.breakPointIndex) {
-			this.status = this.statuses.breakPoint
+	if (this.status < BackMachineStatuses.breakPoint) {
+		if (this.status == BackMachineStatuses.manual && this.ip in this.breakPointIndex) {
+			this.status = BackMachineStatuses.breakPoint
 		}
+	} else {
+		this.ip = (this.ip - 1) & 0xffff
 	}
 	return this.status
 }

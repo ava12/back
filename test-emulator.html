@@ -19,222 +19,316 @@ input[type=button] { margin: 0.1ex 1ex; height: 1.5em; }
 </head>
 <body>
 <div id="dashboard">
-<input type="button" value="Вывод" onclick="selectText('output')">
-<input type="button" value="Ввод" onclick="selectText('input')">
-<input type="button" value="Программа" onclick="selectText('source')">
+<input id="output" type="button" value="Вывод" onclick="emulator.selectText('output')">
+<input id="input" type="button" value="Ввод" onclick="emulator.selectText('input')">
+<input id="source" type="button" value="Программа" onclick="emulator.selectText('source')" disabled="disabled">
 </div>
 
 <div id="displays">
-<textarea id="text" cols="80" rows="20"></textarea>
+<textarea id="text" cols="80" rows="20">0 "Hello "
+\# 0
+\:: check =(0) ?(:in :write @(0)) ^^
+\:: write @(0) .> check
+\:: in</textarea>
 
-<div class="display">Останов: <input type="checkbox" onclick="toggleBp(this.checked)">
+<div class="display">Останов: <input type="checkbox" onclick="emulator.toggleBp(this.checked)">
 <div id="bp">
 </div>
 </div>
 
-<div class="display">Память:<br><input id="addr" type="button" value="0000" onclick="setAddr()"><div id="ram"></div></div>
+<div class="display">Память:<br><input id="addr" type="button" value="0000" onclick="emulator.setAddr()"><div id="ram"></div></div>
 <div class="display">Вызовы:<br><div id="cs"></div></div>
 <div class="display">Операнды:<br><div id="os"></div></div>
 </div>
 <div id="statusbar">
-Адрес: <button onclick="setIp()"><span class="hex control" id="ip">0000</span></button>
+Адрес: <button onclick="emulator.setIp()"><span class="hex control" id="ip">0000</span></button>
 Код: <span class="hex" id="code"></span><br>
+<input type="button" value="Транслировать" onclick="emulator.translate()">
+<input type="button" value="Загрузить" onclick="emulator.load()">
+<input type="button" value="Сброс" onclick="emulator.reset()">
 Шаг: <input id="step" type="checkbox">
-<input type="button" value="Транслировать" onclick="translate()">
-<input type="button" value="Загрузить" onclick="load()">
-<input type="button" value="Сброс" onclick="reset()">
-<input id="run" type="button" value="Пуск" onclick="run()">
+<input id="run" type="button" value="Пуск" onclick="emulator.run()">
+Статус: <span id="status">стоп</span><br>
+<pre>0:!! 1:. 2:^ 3:^^ 4:@ 5:= 6.&lt; 7.> 8:&lt;&lt; 9:>> a:? b:?? c:0 d:00 e:0000 f:$</pre>
 </div>
 
 <script>
 
-var displays = {
-	text: 'text',
-	bp: 'bp',
-	addr: 'addr',
-	ram: 'ram',
-	cs: 'cs',
-	os: 'os',
-	ip: 'ip',
-	code: 'code',
-	step: 'step',
-	run: 'run'
-}
-for (var i in displays) displays[i] = document.getElementById(displays[i])
-
-var isRunning = false
-var currentText = 'source'
-var source = ''
-var program = null
-var address = 0
-var breakEnabled = false
-
-var io = {
-	input: '',
-	output: '',
-	pos: 0,
-
-	read: function () {
-		if (this.pos >= this.input.length) return null
-
-		this.pos++
-		return this.input.charAt(this.pos - 1)
+var emulator = {
+	displays: {
+		text: 'text',
+		bp: 'bp',
+		addr: 'addr',
+		ram: 'ram',
+		cs: 'cs',
+		os: 'os',
+		ip: 'ip',
+		code: 'code',
+		step: 'step',
+		run: 'run',
+		status: 'status',
+		source: 'source',
+		input: 'input',
+		output: 'output'
 	},
 
-	write: function (value) {
-		this.output += String.fromCharCode(value)
-		if (currentText == 'output') displays.text.value = this.output
-		return true
-	}
-}
+	isRunning: false,
+	currentText: 'source',
+	source: '',
+	program: null,
+	address: 0,
+	breakEnabled: false,
+	statuses: [
+		'стоп',
+		'программный останов',
+		null,
+		'точка останова',
+		'ожидание ввода',
+		'попытка вывода',
+		'стек операндов пуст',
+		'стек операндов переполнен',
+		'стек вызовов пуст',
+		'стек вызовов переполнен'
+	],
 
-var machine = new BackMachine(io, io)
+	io: {
+		input: '',
+		output: '',
+		pos: 0,
 
-function selectText(name) {
-	var value = displays.text.value
-	switch (currentText) {
-		case 'source': source = value; break
-		case 'input': io.input = value; break
-		case 'output': io.output = value; break
-	}
+		read: function () {
+			if (this.pos > this.input.length) return null
 
-	currentText = name
-	switch (name) {
-		case 'source': value = source; break
-		case 'input': value = io.input; break
-		case 'output': value = io.output; break
-	}
-	displays.text.value = value
-}
+			this.pos++
+			if (this.pos == this.input.length + 1) return 0
 
-function reverseArray(value) {
-	var len = value.length - 1
-	var result = new Array(len + 1)
-	for (var i = len >> 1; i >= 0; i--) {
-		result[i] = value[len - i]
-		result[len - i] = value[i]
-	}
-	return result
-}
+			return this.input.charCodeAt(this.pos - 1)
+		},
 
-function toHex(value) {
-	return ('000' + value.toString(16)).substr(-4)
-}
+		write: function (value) {
+			this.output += String.fromCharCode(value)
+			if (emulator.currentText == 'output') emulator.displays.text.value = this.output
+			return true
+		}
+	},
 
-function dumpHex(dom, values) {
-	var hex = new Array(values.length)
-	for (var i = hex.length - 1; i >= 0; i--) {
-		hex[i] = toHex(values[i])
-	}
-	dom.innerHTML = hex.join('<br>\n')
-}
+	machine: null,
 
-function dumpCode() {
-	var address = machine.ip
-	displays.ip.innerHTML = toHex(address)
+	selectText: function (name) {
+		this.displays[this.currentText].disabled = false
+		this.displays[name].disabled = true
+		var value = this.displays.text.value
+		switch (this.currentText) {
+			case 'source': this.source = value; break
+			case 'input': this.io.input = value; break
+			case 'output': this.io.output = value; break
+		}
 
-	var code = machine.getProgram(address, 64)
-	var hex = new Array(16)
-	for (var i = 0; i < 64; i++) {
-		hex[i] = (code.charCodeAt(i) & 15).toString(16)
-	}
-	displays.code.innerHTML = hex.join('')
-}
+		this.currentText = name
+		switch (name) {
+			case 'source': value = this.source; break
+			case 'input': value = this.io.input; break
+			case 'output': value = this.io.output; break
+		}
+		this.displays.text.value = value
+	},
 
-function dumpMemory() {
-	displays.addr.value = toHex(address)
-	dumpHex(displays.ram, machine.getMemory(address, 16))
-}
+	reverseArray: function (value) {
+		var len = value.length - 1
+		var result = new Array(len + 1)
+		for (var i = len >> 1; i >= 0; i--) {
+			result[i] = value[len - i]
+			result[len - i] = value[i]
+		}
+		return result
+	},
 
-function dumpOpStack() {
-	dumpHex(displays.os, reverseArray(machine.operandStack.slice(-16)))
-}
+	toHex: function (value) {
+		return ('000' + value.toString(16)).substr(-4)
+	},
 
-function dumpCallStack() {
-	dumpHex(displays.cs, reverseArray(machine.callStack.slice(-16)))
-}
+	dumpHex: function (dom, values) {
+		var hex = new Array(values.length)
+		for (var i = hex.length - 1; i >= 0; i--) {
+			hex[i] = this.toHex(values[i])
+		}
+		dom.innerHTML = hex.join('<br>\n')
+	},
 
-function renderBreakPoints() {
-	var result = []
-	for (var i = 0, mask = 1; i < 16; i++, mask <<= 1) {
-		var address = toHex(machine.breakPoints[i])
-		var checked = (machine.breakFlags & mask ? ' checked="checked"' : '')
-		result.push(
-			'<input type="button" value="' + address +
-			'" onclick="setBp(' + i + ')"><input type="checkbox"' + checked +
-			' onclick="toggleBp(this.checked, ' + i + ')">'
+	dumpCode: function () {
+		var ip = this.machine.ip
+		this.displays.ip.innerHTML = this.toHex(ip)
+
+		var code = this.machine.getProgram(ip - 16, 33)
+		var hex = new Array(16)
+		for (var i = 0; i < 33; i++) {
+			hex[i] = (code.charCodeAt(i) & 15).toString(16)
+		}
+		hex.splice(17, 0, '-')
+		hex.splice(16, 0, '-')
+		this.displays.code.innerHTML = hex.join('')
+	},
+
+	dumpMemory: function () {
+		this.displays.addr.value = this.toHex(this.address)
+		this.dumpHex(this.displays.ram, this.machine.getMemory(this.address, 16))
+	},
+
+	dumpOpStack: function () {
+		this.dumpHex(this.displays.os, this.reverseArray(this.machine.operandStack.slice(-16)))
+	},
+
+	dumpCallStack: function () {
+		this.dumpHex(this.displays.cs, this.reverseArray(this.machine.callStack.slice(-16)))
+	},
+
+	renderBreakPoints: function () {
+		var result = []
+		for (var i = 0, mask = 1; i < 16; i++, mask <<= 1) {
+			var address = this.toHex(this.machine.breakPoints[i])
+			var checked = (this.machine.breakFlags & mask ? ' checked="checked"' : '')
+			result.push(
+				'<input type="button" value="' + address +
+				'" onclick="setBp(' + i + ')"><input type="checkbox"' + checked +
+				' onclick="toggleBp(this.checked, ' + i + ')">'
+			)
+		}
+		this.displays.bp.innerHTML = result.join('<br>\n')
+	},
+
+	translate: function () {
+		if (this.isRunning) return
+
+		if (this.currentText == 'source') this.source = this.displays.text.value
+		try {
+			program = (new BackParser(this.source)).parse()
+		} catch (e) {
+			console.log(e)
+			alert(e)
+			return
+		}
+
+		this.machine.setProgram(0, program.code)
+		for (var i = 0; i < 16; i++) {
+			var isOn = (i in program.breakPoints)
+			this.machine.setBreakPoint(i, isOn ? program.breakPoints[i] : 0)
+			this.machine.toggleBreakPoint(i, isOn)
+		}
+		this.renderBreakPoints()
+		this.dumpCode()
+	},
+
+	load: function () {
+		if (this.isRunning) return
+
+		if (this.currentText == 'source') this.source = this.displays.text.value
+		this.machine.setProgram(this.machine.ip, this.source)
+		this.dumpCode()
+	},
+
+	reset: function () {
+		this.isRunning = false
+		this.machine.ip = 0
+		this.machine.callStack = []
+		this.machine.operandStack = []
+		this.machine.memory = {}
+		this.io.pos = 0
+		this.dumpCode()
+		this.dumpCallStack()
+		this.dumpOpStack()
+	},
+
+	setIp: function () {
+		if (this.isRunning) return
+
+		var newIp = prompt('Новый IP (шестнадцатиричный):', this.toHex(this.machine.ip))
+		if (!newIp) return
+
+		this.machine.ip = parseInt(newIp, 16) & 0xffff
+		this.dumpCode()
+	},
+
+	toggleBp: function (flag, index) {
+		if (index == undefined) this.breakEnabled = flag
+		else this.machine.toggleBreakPoint(index, flag)
+	},
+
+	setBp: function (index) {
+		var newBp = prompt(
+			'Новый адрес для точки останова ' + index + ' (шестнадцатиричный):',
+			this.toHex(this.machine.breakPoints[index])
 		)
+		if (!newBp) return
+
+		this.machine.setBreakPoint(index, parseInt(newBp, 16))
+		this.renderBreakPoints()
+	},
+
+	setAddr: function () {
+		var newAddr = prompt('Новый адрес в памяти (шестнадцатиричный):', this.toHex(this.address))
+		if (!newAddr) return
+
+		this.address = newAddr
+		this.dumpMemory()
+	},
+
+
+	run: function () {
+		this.isRunning = !this.isRunning
+		this.displays.run.value = (this.isRunning ? 'Стоп' : 'Пуск')
+		if (this.isRunning) {
+			this.displays.status.innerHTML = ''
+			this.selectText(this.currentText)
+			this.step()
+		} else {
+			this.dumpCode()
+			this.dumpMemory()
+			this.dumpOpStack()
+			this.dumpCallStack()
+		}
+	},
+
+	step: function () {
+		if (!this.isRunning) {
+			this.displays.status.innerHTML = this.statuses[this.machine.status]
+			return
+		}
+
+		this.machine.step()
+		if (this.machine.status == BackMachineStatuses.manual && !this.displays.step.checked) {
+			setTimeout(function () {
+				emulator.step()
+			}, 0)
+			return
+		}
+
+		this.displays.status.innerHTML = this.statuses[this.machine.status]
+		var events = this.machine.events
+
+		if (events & BackMachineEvents.write) {
+			var eventAddr = this.machine.eventAddress
+			if (eventAddr >= this.address && eventAddr < (this.address + 16)) {
+				this.dumpMemory()
+			}
+		}
+
+		if (events & BackMachineEvents.opStack) this.dumpOpStack()
+		if (events & BackMachineEvents.callStack) this.dumpCallStack()
+
+		this.dumpCode()
+		this.run()
 	}
-	displays.bp.innerHTML = result.join('<br>\n')
 }
 
-function translate() {
-	
-}
-
-function load() {
-	if (isRunning) return
-
-	if (currentText == 'source') source = displays.text.value
-	machine.setProgram(machine.ip, source)
-	dumpCode()
-}
-
-function reset() {
-	isRunning = false
-	machine.ip = 0
-	machine.callStack = []
-	machine.operandStack = []
-	dumpCode()
-	dumpCallStack()
-	dumpOpStack()
-}
-
-function setIp() {
-	if (isRunning) return
-
-	var newIp = prompt('Новый IP (шестнадцатиричный):', toHex(machine.ip))
-	if (!newIp) return
-
-	machine.ip = parseInt(newIp, 16) & 0xffff
-	dumpCode()
-}
-
-function toggleBp(flag, index) {
-	if (index == undefined) breakEnabled = flag
-	else machine.toggleBreakPoint(index, flag)
-}
-
-function setBp(index) {
-	var newBp = prompt(
-		'Новый адрес для точки останова ' + index + ' (шестнадцатиричный):',
-		toHex(machine.breakPoints[index])
-	)
-	if (!newBp) return
-
-	machine.setBreakPoint(index, parseInt(newBp, 16))
-	renderBreakPoints()
-}
-
-function setAddr() {
-	var newAddr = prompt('Новый адрес в памяти (шестнадцатиричный):', toHex(address))
-	if (!newAddr) return
-
-	address = newAddr
-	dumpMemory()
-}
-
-
-function run() {
-
-}
-
-
-dumpCode()
-dumpCallStack()
-dumpOpStack()
-dumpMemory()
-renderBreakPoints()
+;(function () {
+	for (var i in this.displays) this.displays[i] = document.getElementById(this.displays[i])
+	this.machine = new BackMachine(this.io, this.io),
+	this.dumpCode()
+	this.dumpCallStack()
+	this.dumpOpStack()
+	this.dumpMemory()
+	this.renderBreakPoints()
+}).apply(emulator)
 
 </script>
 
