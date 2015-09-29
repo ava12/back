@@ -80,8 +80,8 @@ function BackParser(source) {
 		':=':   [this.types.op, BackMachineOpcodes.st],
 		':.<':  [this.types.op, BackMachineOpcodes.ins],
 		':.>':  [this.types.op, BackMachineOpcodes.outs],
-		':<<<': [this.types.op, BackMachineOpcodes.sh],
-		':<<':  [this.types.op, BackMachineOpcodes.sa],
+		':<<': [this.types.op, BackMachineOpcodes.shl],
+		':>>':  [this.types.op, BackMachineOpcodes.shr],
 		':?':   [this.types.op, BackMachineOpcodes.test],
 		':??':  [this.types.op, BackMachineOpcodes.bt],
 		':$':   [this.types.op, BackMachineOpcodes.dup]
@@ -160,7 +160,7 @@ BackParser.prototype.emitNumber = function (value, line) {
 	if (value >= 0x8000) value -= 0x10000
 	if (value < 8 && value >= -8) {
 		ops = [BackMachineOpcodes.dn, value & 0xf]
-	}	else if (value < 128 && value > -128) {
+	}	else if (value < 128 && value >= -128) {
 		ops = [BackMachineOpcodes.db, (value & 0xf0) >> 4, value & 0xf]
 	}	else {
 		ops = [BackMachineOpcodes.dw, (value & 0xf000) >> 12, (value & 0xf00) >> 8,
