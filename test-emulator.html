@@ -2,9 +2,9 @@
 <html>
 <head>
 <meta charset="utf8">
-<script src="machine.js"></script>
-<script src="lexer.js"></script>
-<script src="parser.js"></script>
+<script src="js/machine.js"></script>
+<script src="js/lexer.js"></script>
+<script src="js/parser.js"></script>
 
 <style>
 input[type=button] { margin: 0.1ex 1ex; height: 1.5em; }
@@ -17,6 +17,7 @@ input[type=button] { margin: 0.1ex 1ex; height: 1.5em; }
 </style>
 
 </head>
+
 <body>
 <div id="dashboard">
 <input id="output" type="button" value="Вывод" onclick="emulator.selectText('output')">
@@ -25,11 +26,7 @@ input[type=button] { margin: 0.1ex 1ex; height: 1.5em; }
 </div>
 
 <div id="displays">
-<textarea id="text" cols="80" rows="20">0 "Hello "
-\# 0
-\:: check =(0) ?(:in :write @(0)) ^^
-\:: write @(0) .> check
-\:: in</textarea>
+<textarea id="text" cols="80" rows="20"></textarea>
 
 <div class="display">Останов: <input type="checkbox" onclick="emulator.toggleBp(this.checked)">
 <div id="bp">
