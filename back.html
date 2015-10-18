@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf8">
+<script src="js/machine.js"></script>
+<script src="js/lexer.js"></script>
+<script src="js/parser.js"></script>
+
+<style>
+.right { position: absolute; right: 1.5em; }
+.hidden, .hidden * { display: none !important; }
+h6 { margin: 0.5em 0px; }
+input[type=button] { height: 1.8em; line-height: 1.5em; margin: 0.25em 0px 0px 1%; }
+
+#frame { width: 60em; padding: 0px; margin: 0px; vertical-align: top; }
+#frame>div { display: inline-block; box-sizing: border-box; padding: 0.5em; margin: 0px; vertical-align: top; }
+
+.io { width: 49%; height: 10em; overflow: auto; }
+
+#frame div.cpu { width: 100%; font-family: monospace; }
+
+div.dump { width: 5em; height: 25em; text-align: center; }
+div.dump span { font-family: monospace; line-height: 1.3em; }
+
+#source-frame, #debug-frame { width: 44em; height: 25em; position: relative; }
+#source { width: 98%; height: 90%; margin: 0.5em 0px; }
+#source-name { display: inline-block; width: 20em; }
+
+#debug-container { width: 98%; height: 90%; overflow: scroll; padding: 0px; margin-top: 0.5em; }
+#debug { font-family: monospace; white-space: pre; min-width: 100%; }
+#debug tr { cursor: pointer; }
+#debug tr:hover, #debug tr:hover th { background: #ddf !important; }
+#debug th { width: 4em; background: #eee; text-align: right; font-weight: normal; }
+#debug th+th { width: 1em; text-align: center; color: #eee; }
+#debug tr.break-on td { background: #fdd; }
+#debug tr.break-on th+th { color: #f33; content: "*"; }
+#debug tr.break-off td { background: #efe; }
+#debug tr.break-off th+th { color: #393; content: "*"; }
+#debug tr.current td { background: #36c; color: #fff; }
+</style>
+</head>
+
+<body>
+<div id="frame">
+<textarea id="input" class="io"></textarea>
+<div id="output" class="io"></div>
+
+<div class="cpu">
+IP: <span id="ip">0000</span>
+<span id="cpu"></span>
+</div>
+
+<div class="dump"><h6 title="стек операндов">СО</h6><span id="ops"></span></div>
+<div class="dump"><h6 title="стек возврата">СВ</h6><span id="calls"></span></div>
+
+<div class="dump">
+<input id="address" type="button" value="0000" title="адрес памяти" onclick="emulator.selectAddress()"><br>
+<span id="ram">0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000</span>
+</div>
+
+<div id="source-frame" class="hidden">
+<span id="source-name"></span>
+<input type="button" value="Сохранить" onclick="emulator.saveSource()">
+<input type="button" value="Загрузить" onclick="emulator.loadSource()">
+<input type="button" class="right" value="Отладка" onclick="emulator.showDebug()">
+<br>
+<textarea id="source"></textarea>
+</div>
+
+<div id="debug-frame">
+<button title="Выйти из подпрограммы (6)" onclick="emulator.stepOut()">6</button>
+<button title="Шаг/вход в подпрограмму (7)" onclick="emulator.stepIn()">7</button>
+<button title="Шаг без входа в подпрограмму (8)" onclick="emulator.stepOver()">8</button>
+<button title="Пуск/стоп (9)" onclick="emulator.run()">9</button>
+<button title="Сброс (0)" onclick="emulator.reset()">0</button>
+<input type="button" class="right" value="Код" onclick="emulator.showSource()">
+
+<div id="debug-container">
+<table id="debug" border="0" cellspacing="0">
+</table>
+</div>
+</div>
+
+</div>
+
+<script>
+</script>
+
+</body>
+</html>
