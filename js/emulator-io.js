@@ -29,7 +29,7 @@ BackEmulatorIo.prototype.read = function () {
 	if (this.pos == this.input.length + 1) return 0
 
 	return this.input.charCodeAt(this.pos - 1)
-},
+}
 
 BackEmulatorIo.prototype.write = function (value) {
 	value = String.fromCharCode(value)

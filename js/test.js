@@ -45,24 +45,25 @@ var BackTest = {
 
 	runCase: function (testCase, stop) {
 		var result = []
+		var i, j, got, name
 		try {
 			var io = new BackTestIo(testCase.input)
 			var program = (new BackParser(testCase.source)).parse()
 			var machine = new BackMachine(io, io, program.code)
-			for (var i in program.breakPoints) {
+			for (i in program.breakPoints) {
 				machine.setBreakPoint(i, program.breakPoints[i])
 				machine.toggleBreakPoint(i, true)
 			}
 
 			if (stop) {
-				var name = '' // место для бряка
+				//noinspection JSUnusedAssignment
+				name = '' // место для бряка
 			}
 
 			while (!machine.status) machine.step()
 
 			for (name in testCase) {
 				var expected = testCase[name]
-				var got, i, j
 
 				switch (name) {
 					case 'ip':
@@ -124,8 +125,9 @@ var BackTest = {
 		}
 
 		if (stop) {
+			//noinspection JSUnusedAssignment
 			name = '' // место для бряка
 		}
 		return result
-	},
+	}
 }

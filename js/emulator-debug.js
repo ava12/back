@@ -15,7 +15,7 @@ function BackEmulatorDebug(machine, source, view, content) {
 	}
 
 	this.machine.setProgram(this.program.code)
-	for (var i in this.program.breakPoints) {
+	for (i in this.program.breakPoints) {
 		this.machine.setBreakPoint(i, program.breakPoints[i])
 		this.machine.toggleBreakPoint(i, true)
 	}

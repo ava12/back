@@ -1,5 +1,6 @@
 function BackEmulator()  {
-	this.dom = {
+	this.dom = {}
+	var dom = {
 		input: 'input',
 		output: 'output',
 		ip: 'ip',
@@ -15,8 +16,12 @@ function BackEmulator()  {
 		debugContainer: 'debug-container',
 		debug: 'debug'
 	}
-	this.stateDom = ['cpu', 'ops', 'calls', 'ram']
-	for (var i in this.dom) this.dom[i] = document.getElementById(this.dom[i])
+	for (var i in dom) {
+		this.dom[i] = document.getElementById(dom[i])
+	}
+	dom = ['cpu', 'ops', 'calls', 'ram']
+	this.stateDom = []
+	for (i in dom) this.stateDom[i] = dom[i]
 
 	this.io = new BackEmulatorIo(this.dom.output)
 	this.machine = null
