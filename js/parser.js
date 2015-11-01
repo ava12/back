@@ -7,10 +7,11 @@ function BackParserException(message, line, pos) {
 }
 
 
-function BackProgram(code, debugInfo, breakPoints) {
+function BackProgram(code, debugInfo, breakPoints, breakLines) {
 	this.code = code // строка
 	this.debugInfo = debugInfo // [[первый_адрес, последний_адрес, строка]]
 	this.breakPoints = breakPoints // {индекс: адрес}
+	this.breakLines = breakLines // {номер_строки: [индексы]}
 }
 
 
@@ -91,6 +92,7 @@ function BackParser(source) {
 	this.queue = new BackParserQueue(this.lexer)
 	this.code = []
 	this.breakPoints = {}
+	this.breakLines = {}
 	this.debug = [] // [строка: [адреса]]
 	this.labels = {} // {имя: [адреса]}
 	this.subs = {} // {имя: [адреса]}
@@ -136,7 +138,8 @@ BackParser.prototype.parse = function () {
 	}
 
 	this.checkUnresolvedNames()
-	this.program = new BackProgram(this.convertCode(), this.convertDebugInfo(), this.breakPoints)
+	this.program = new BackProgram(this.convertCode(), this.convertDebugInfo(),
+		this.breakPoints, this.breakLines)
 	return this.program
 }
 
@@ -252,8 +255,13 @@ BackParser.prototype.emitMetaToken = function (token) {
 		case this.meta.breakPoint:
 			tokens = this.fetch(BackTokenTypes.number)
 			value = tokens[0].data & 15
-			if (!(value in this.breakPoints)) this.breakPoints[value] = this.code.length
-			else throw this.newException('точка останова ' + value + ' уже задана', tokens[0])
+			if (value in this.breakPoints) {
+				throw this.newException('точка останова ' + value + ' уже задана', tokens[0])
+			} else {
+				this.breakPoints[value] = this.code.length
+				if (this.breakLines[token.line]) this.breakLines[token.line].push(value)
+				else this.breakLines[token.line] = [value]
+			}
 		break
 
 		case this.meta.set:

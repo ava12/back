@@ -14,6 +14,10 @@ function BackMachine(input, output, program) {
 	this.breakPointIndex = {}
 	this.events = 0
 	this.eventAddress = null
+	this.isRunning = false
+	this.callback = null
+	this.context = null
+	this.ticks = 0
 }
 
 BackMachineOpcodes = {
@@ -319,5 +323,40 @@ BackMachine.prototype.step = function () {
 	} else {
 		this.ip = (this.ip - 1) & 0xffff
 	}
+	this.ticks++
 	return this.status
+}
+
+BackMachine.prototype.tick = function () {
+	if (!this.isRunning) return
+
+	this.step()
+	if (this.status == BackMachineStatuses.manual) {
+		var t = this
+		setTimeout(function () {
+			t.tick()
+		}, 0)
+		return
+	}
+
+	this.isRunning = false
+	if (this.callback) {
+		this.callback.call(this.context, this.status, this)
+	}
+}
+
+BackMachine.prototype.run = function (callback, context) {
+	if (callback) {
+		this.callback = callback
+		this.context = context
+	}
+	this.isRunning = true
+	var t = this
+	setTimeout(function () {
+		t.tick()
+	}, 0)
+}
+
+BackMachine.prototype.stop = function () {
+	this.isRunning = false
 }

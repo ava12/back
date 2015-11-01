@@ -2,9 +2,15 @@
 <html>
 <head>
 <meta charset="utf8">
+<title>Интерпретатор BACK</title>
 <script src="js/machine.js"></script>
 <script src="js/lexer.js"></script>
 <script src="js/parser.js"></script>
+<script src="js/emulator-io.js"></script>
+<script src="js/emulator-programs.js"></script>
+<script src="js/emulator-storage.js"></script>
+<script src="js/emulator-debug.js"></script>
+<script src="js/emulator.js"></script>
 
 <style>
 .right { position: absolute; right: 1.5em; }
@@ -15,7 +21,7 @@ input[type=button] { height: 1.8em; line-height: 1.5em; margin: 0.25em 0px 0px 1
 #frame { width: 60em; padding: 0px; margin: 0px; vertical-align: top; }
 #frame>div { display: inline-block; box-sizing: border-box; padding: 0.5em; margin: 0px; vertical-align: top; }
 
-.io { width: 49%; height: 10em; overflow: auto; }
+.io { width: 49%; height: 10em; overflow: auto; font-family: monospace; }
 
 #frame div.cpu { width: 100%; font-family: monospace; }
 
@@ -37,12 +43,27 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 #debug tr.break-off td { background: #efe; }
 #debug tr.break-off th+th { color: #393; content: "*"; }
 #debug tr.current td { background: #36c; color: #fff; }
+#debug td { padding-left: 0.5em; }
+
+#dialog-back {
+	position: fixed; left: 0px; top: 0px; right: 0px; bottom: 0px;
+	background: #000; opacity: 0.5;
+}
+
+#dialog-pos { position: fixed; width: 1px; height: 1px; left: 50%; top: 50%; }
+#dialog-pos>div {
+	position: absolute; box-sizing: border-box; width: 40em; height: 20em; left: -20em; top: -10em;
+	background: #fff; border: 2px solid; opacity: 1; z-index: 1000; overflow: auto; padding: 1em;
+}
+
+h5 { font-size: 1.2em; margin: 0.5em 0px; }
+h6 { font-size: 1em; margin: 0.5em 0px; }
 </style>
 </head>
 
 <body>
 <div id="frame">
-<textarea id="input" class="io"></textarea>
+<textarea id="input" class="io" onchange="emulator.updateInput()"></textarea>
 <div id="output" class="io"></div>
 
 <div class="cpu">
@@ -55,10 +76,10 @@ IP: <span id="ip">0000</span>
 
 <div class="dump">
 <input id="address" type="button" value="0000" title="адрес памяти" onclick="emulator.selectAddress()"><br>
-<span id="ram">0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000<br>0000</span>
+<span id="ram"></span>
 </div>
 
-<div id="source-frame" class="hidden">
+<div id="source-frame">
 <span id="source-name"></span>
 <input type="button" value="Сохранить" onclick="emulator.saveSource()">
 <input type="button" value="Загрузить" onclick="emulator.loadSource()">
@@ -67,7 +88,7 @@ IP: <span id="ip">0000</span>
 <textarea id="source"></textarea>
 </div>
 
-<div id="debug-frame">
+<div id="debug-frame" class="hidden">
 <button title="Выйти из подпрограммы (6)" onclick="emulator.stepOut()">6</button>
 <button title="Шаг/вход в подпрограмму (7)" onclick="emulator.stepIn()">7</button>
 <button title="Шаг без входа в подпрограмму (8)" onclick="emulator.stepOver()">8</button>
@@ -84,6 +105,33 @@ IP: <span id="ip">0000</span>
 </div>
 
 <script>
+</script>
+
+<div id="dialog" class="hidden">
+<div id="dialog-back"></div>
+<div id="dialog-pos">
+
+<div id="load-dialog" class="hidden">
+<h5>Загрузить</h5>
+<h6>Встроенные программы</h6>
+<ul id="load-builtin"></ul>
+<h6>Сохраненные программы</h6>
+<ul id="load-list"></ul>
+</div>
+
+<div id="save-dialog" class="hidden">
+<h5>Загрузить</h5>
+<ul id="save-list"></ul>
+<input type="button" value="Новая программа" onclick="emulator.saveNew()">
+</div>
+
+</div>
+</div>
+
+<script>
+
+var emulator = new BackEmulator()
+
 </script>
 
 </body>

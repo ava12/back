@@ -114,7 +114,7 @@ BackLexer.prototype.stringToken = function (quote) {
 	var fragmentPos = this.match.index + 1
 	var pos = fragmentPos - this.linePos
 	var text = this.search(quote)
-	var message = 'отсутствует закрывающая скобка'
+	var message = 'отсутствует закрывающая кавычка'
 	if (text == undefined) throw new BackLexerException(message, line, pos)
 
 	fragmentPos += text.length + 1
