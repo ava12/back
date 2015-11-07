@@ -1,9 +1,11 @@
-function BackEmulatorDebug(machine, source, view, content) {
+function BackEmulatorDebug(machine, source, view, content, callback, context) {
 	var i, j
 
 	this.machine = machine
 	this.view = view
 	this.content = content
+	this.emulatorCallback = callback
+	this.emulatorContext = context
 	this.program = (new BackParser(source)).parse()
 
 	this.debugInfo = this.program.debugInfo
@@ -14,7 +16,7 @@ function BackEmulatorDebug(machine, source, view, content) {
 		}
 	}
 
-	this.machine.setProgram(this.program.code)
+	this.machine.setProgram(0, this.program.code)
 	for (i in this.program.breakPoints) {
 		this.machine.setBreakPoint(i, program.breakPoints[i])
 		this.machine.toggleBreakPoint(i, true)
@@ -33,6 +35,9 @@ function BackEmulatorDebug(machine, source, view, content) {
 	this.contentHeight = this.content.clientHeight
 	this.lineHeight = Math.floor(this.viewHeight / this.lines.length)
 	this.currentLine = null
+	this.isRunning = false
+	this.targetLine = null
+	this.targetDepth = null
 }
 
 BackEmulatorDebug.prototype.getLines = function (debugInfo) {
@@ -107,6 +112,7 @@ BackEmulatorDebug.prototype.toggleBreakPoint = function (dom) {
 		for (index = 0; index < 16; index++) {
 			if (this.program.breakPoints[index] == undefined) {
 				this.machine.setBreakPoint(index, address)
+				this.machine.toggleBreakPoint(index, true)
 				this.program.breakPoints[index] = address
 				this.program.breakLines[line] = [index]
 				break
@@ -118,4 +124,95 @@ BackEmulatorDebug.prototype.toggleBreakPoint = function (dom) {
 		}
 	}
 	dom.setAttribute('class', classes.join(' '))
+}
+
+BackEmulatorDebug.prototype.highlightLine = function (line) {
+	var row
+	if (this.currentLine) {
+		row = this.content.tBodies[0].childNodes[this.currentLine - 1]
+		row.setAttribute('class', row.className.replace(/\s?current\s?/, ''))
+	}
+	this.currentLine = line
+	if (line) {
+		row = this.content.tBodies[0].childNodes[line - 1]
+		row.setAttribute('class', 'current ' + row.className)
+	}
+}
+
+BackEmulatorDebug.prototype.callback = function () {
+	this.isRunning = false
+	this.highlightLine(this.getLineForAddress(this.machine.ip))
+	this.emulatorCallback.call(this.emulatorContext)
+}
+
+BackEmulatorDebug.prototype.run = function () {
+	if (this.isRunning) return
+
+	if (this.currentLine == undefined && this.machine.getBreakIndex(this.machine.ip) != undefined) {
+		this.callback()
+		return
+	}
+
+	this.highlightLine(null)
+	this.isRunning = true
+	this.machine.run(this.callback, this)
+}
+
+BackEmulatorDebug.prototype.stop = function () {
+	this.isRunning = false
+	this.machine.stop()
+}
+
+BackEmulatorDebug.prototype.reset = function () {
+	this.machine.reset()
+	this.highlightLine(null)
+}
+
+BackEmulatorDebug.prototype.checkStepOut = function (line, depth) {
+	return (!depth || depth < this.targetDepth)
+}
+
+BackEmulatorDebug.prototype.checkStepIn = function (line, depth) {
+	return (line != this.targetLine)
+}
+
+BackEmulatorDebug.prototype.checkStepOver = function (line, depth) {
+	return (line != this.targetLine && depth <= this.targetDepth)
+}
+
+BackEmulatorDebug.prototype.handleStep = function (checkFunction) {
+	if (!this.isRunning) {
+		this.callback()
+		return
+	}
+
+	var status = this.machine.step()
+	var line = this.getLineForAddress(this.machine.ip)
+	var depth = this.machine.callStack.length
+	this.isRunning = (checkFunction.call(this, line, depth) && status < BackMachineStatuses.input)
+	if (!this.isRunning) {
+		this.callback()
+		return
+	}
+
+	var t = this
+	setTimeout(function () {
+		t.handleStep(checkFunction)
+	}, 0)
+}
+
+BackEmulatorDebug.prototype.step = function (checkFunction) {
+	if (this.isRunning) {
+		this.stop()
+		return
+	}
+
+	this.targetLine = this.currentLine
+	this.targetDepth = this.machine.callStack.length
+
+	var t = this
+	this.isRunning = true
+	setTimeout(function () {
+		t.handleStep(checkFunction)
+	}, 0)
 }

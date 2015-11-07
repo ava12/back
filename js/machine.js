@@ -70,9 +70,7 @@ BackMachine.prototype.getBreakPoint = function (index) {
 	return this.breakPoints[index & 15]
 }
 
-BackMachine.prototype.setBreakPoint = function (index, address) {
-	index &= 15
-	this.breakPoints[index] = address & 0xffff
+BackMachine.prototype.updateBreakPointIndex = function () {
 	this.breakPointIndex = {}
 	if (this.breakFlags) {
 		var flags = this.breakFlags
@@ -89,6 +87,12 @@ BackMachine.prototype.setBreakPoint = function (index, address) {
 	}
 }
 
+BackMachine.prototype.setBreakPoint = function (index, address) {
+	index &= 15
+	this.breakPoints[index] = address & 0xffff
+	this.updateBreakPointIndex()
+}
+
 BackMachine.prototype.toggleBreakPoint = function (index, on) {
 	index &= 15
 	var flags = this.breakFlags
@@ -97,6 +101,7 @@ BackMachine.prototype.toggleBreakPoint = function (index, on) {
 		var newFlags = (on ? flags | mask : flags & (~mask))
 		if (newFlags != flags) this.breakFlags = newFlags
 	}
+	this.updateBreakPointIndex()
 	return !!(flags & mask)
 }
 
@@ -359,4 +364,18 @@ BackMachine.prototype.run = function (callback, context) {
 
 BackMachine.prototype.stop = function () {
 	this.isRunning = false
+}
+
+BackMachine.prototype.reset = function () {
+	this.isRunning = false
+	this.ip = 0
+	this.memory = {}
+	this.callStack = []
+	this.operandStack = []
+}
+
+BackMachine.prototype.getBreakIndex = function (address) {
+	var result = this.breakPointIndex[address]
+	if (result != undefined && (this.breakFlags & (1 << result))) return result
+	else return null
 }

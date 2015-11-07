@@ -19,14 +19,23 @@ function BackEmulator()  {
 	for (var i in dom) {
 		this.dom[i] = document.getElementById(dom[i])
 	}
-	dom = ['cpu', 'ops', 'calls', 'ram']
+	dom = ['ip', 'cpu', 'ops', 'calls', 'ram']
 	this.stateDom = []
-	for (i in dom) this.stateDom[i] = dom[i]
+	for (i in dom) this.stateDom[i] = this.dom[dom[i]]
 
 	this.io = new BackEmulatorIo(this.dom.output)
 	this.machine = null
 	this.address = 0
 	this.debug = null
+}
+
+BackEmulator.prototype.messages = {
+	4: 'ожидание готовности ввода',
+	5: 'ожидание готовности вывода',
+	6: 'стек операндов пуст',
+	7: 'стек операндов переполнен',
+	8: 'стек возврата пуст',
+	9: 'стек возврата переполнен'
 }
 
 BackEmulator.prototype.hex = function (value) {
@@ -52,6 +61,44 @@ BackEmulator.prototype.dumpRam = function () {
 	this.dom.ram.innerHTML = dump.join('<br>\r\n')
 }
 
+BackEmulator.prototype.dumpStack = function (dom, stack) {
+	var len = stack.length - 1
+	if (len < 0) {
+		dom.innerHTML = ''
+		return
+	}
+
+	var reversed = new Array(len + 1)
+	for (var i = len >> 1; i >= 0; i--) {
+		reversed[i] = this.hex(stack[len - i])
+		reversed[len - i] = this.hex(stack[i])
+	}
+	dom.innerHTML = reversed.join('<br>\r\n')
+}
+
+BackEmulator.prototype.dumpCpu = function () {
+	this.dom.ip.innerHTML = this.hex(this.machine.ip)
+	var code = this.machine.getProgram(this.machine.ip - 16, 33)
+	var hex = new Array(33)
+	for (var i = 0; i < 33; i++) {
+		hex[i] = (code.charCodeAt(i) & 15).toString(16)
+	}
+	hex.splice(17, 0, '-')
+	hex.splice(16, 0, '-')
+	this.dom.cpu.innerHTML = hex.join('')
+}
+
+BackEmulator.prototype.showMachineState = function () {
+	this.dumpCpu()
+	this.dumpRam()
+	this.dumpStack(this.dom.ops, this.machine.operandStack)
+	this.dumpStack(this.dom.calls, this.machine.callStack)
+}
+
+BackEmulator.prototype.hideMachineState = function () {
+	for (var i in this.stateDom) this.stateDom[i].innerHTML = ''
+}
+
 BackEmulator.prototype.saveSource = function () { alert('Еще не реализовано') }
 BackEmulator.prototype.loadSource = function () { alert('Еще не реализовано') }
 
@@ -66,7 +113,8 @@ BackEmulator.prototype.showDebug = function () {
 	this.machine = new BackMachine(this.io, this.io)
 
 	try {
-		this.debug = new BackEmulatorDebug(this.machine, source, this.dom.debugContainer, this.dom.debug)
+		this.debug = new BackEmulatorDebug(this.machine, source,
+			this.dom.debugContainer, this.dom.debug, this.callback, this)
 	} catch (e) {
 		alert(e.message)
 		return
@@ -74,4 +122,28 @@ BackEmulator.prototype.showDebug = function () {
 
 	this.dom.sourceFrame.setAttribute('class', 'hidden')
 	this.dom.debugFrame.setAttribute('class', '')
+	this.io.reset(this.dom.input.value)
+	this.showMachineState()
+}
+
+BackEmulator.prototype.callback = function () {
+	this.showMachineState()
+	var message = this.messages[this.machine.status]
+	if (message) alert(message)
+}
+
+BackEmulator.prototype.run = function () {
+	if (this.debug.isRunning) this.debug.stop()
+	else {
+		this.hideMachineState()
+		this.debug.run()
+	}
+}
+
+BackEmulator.prototype.reset = function () {
+	if (this.debug.isRunning) return
+
+	this.debug.reset()
+	this.io.reset(this.dom.input.value)
+	this.showMachineState()
 }

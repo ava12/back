@@ -69,6 +69,8 @@ h6 { font-size: 1em; margin: 0.5em 0px; }
 <div class="cpu">
 IP: <span id="ip">0000</span>
 <span id="cpu"></span>
+<pre>0:!! 1:. 2:^ 3:^^ 4:@ 5:= 6.&lt; 7.> 8:&lt;&lt; 9:>> a:? b:?? c:x d:xx e:xxxx f:$</pre>
+
 </div>
 
 <div class="dump"><h6 title="стек операндов">СО</h6><span id="ops"></span></div>
@@ -85,7 +87,9 @@ IP: <span id="ip">0000</span>
 <input type="button" value="Загрузить" onclick="emulator.loadSource()">
 <input type="button" class="right" value="Отладка" onclick="emulator.showDebug()">
 <br>
-<textarea id="source"></textarea>
+<textarea id="source">1
+2
+3</textarea>
 </div>
 
 <div id="debug-frame" class="hidden">
