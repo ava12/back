@@ -41,8 +41,8 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 #debug th+th { width: 1em; text-align: center; color: #eee; }
 #debug tr.break-on td { background: #fdd; }
 #debug tr.break-on th+th { color: #f33; content: "*"; }
-#debug tr.break-off td { background: #efe; }
-#debug tr.break-off th+th { color: #393; content: "*"; }
+#debug tr.break-off td { background: #cfc; }
+#debug tr.break-off th+th { color: #060; content: "*"; }
 #debug tr.current td { background: #36c; color: #fff; }
 #debug td { padding-left: 0.5em; }
 
@@ -57,6 +57,9 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 	background: #fff; border: 2px solid; opacity: 1; z-index: 1000; overflow: auto; padding: 1em;
 }
 
+#dialog-pos ul { list-style-type: none; padding-left: 1em; }
+#dialog-pos ul a { cursor: pointer; color: #00f; text-decoration: underline; }
+
 h5 { font-size: 1.2em; margin: 0.5em 0px; }
 h6 { font-size: 1em; margin: 0.5em 0px; }
 
@@ -67,7 +70,7 @@ h6 { font-size: 1em; margin: 0.5em 0px; }
 <body>
 <div id="frame">
 <textarea id="input" class="io" onchange="emulator.updateInput()"></textarea>
-<div id="output" class="io"></div>
+<textarea id="output" class="io"></textarea>
 
 <div class="cpu">
 IP: <span id="ip">0000</span>
@@ -86,13 +89,13 @@ IP: <span id="ip">0000</span>
 
 <div id="source-frame">
 <span id="source-name"></span>
-<input type="button" value="Сохранить" onclick="emulator.saveSource()">
-<input type="button" value="Загрузить" onclick="emulator.loadSource()">
+<input type="button" value="Программы" onclick="emulator.showProgramDialog()">
 <input type="button" class="right" value="Отладка" onclick="emulator.showDebug()">
 <br>
-<textarea id="source">1
-2
-3</textarea>
+<textarea id="source">0 "Hello world!"
+\:: putc $ =(0) :end :put @(0) ? ^^
+\:: put .> putc
+\:: end</textarea>
 </div>
 
 <div id="debug-frame" class="hidden">
@@ -100,7 +103,7 @@ IP: <span id="ip">0000</span>
 <button title="Шаг/вход в подпрограмму (7)" onclick="emulator.stepIn()">&#x21b4;</button>
 <button title="Шаг без входа в подпрограмму (8)" onclick="emulator.stepOver()">&#x21b7;</button>
 &nbsp;&nbsp;
-<button title="Пуск/стоп (9)" onclick="emulator.run()">&#x23ef;</button>
+<button title="Пуск/стоп (9)" onclick="emulator.run()">&#x2023;</button>
 &nbsp;&nbsp;
 <button title="Сброс (0)" onclick="emulator.reset()">&#x21bb;</button>
 <input type="button" class="right" value="Код" onclick="emulator.showSource()">
@@ -120,18 +123,15 @@ IP: <span id="ip">0000</span>
 <div id="dialog-back"></div>
 <div id="dialog-pos">
 
-<div id="load-dialog" class="hidden">
-<h5>Загрузить</h5>
-<h6>Встроенные программы</h6>
+<div id="program-dialog">
+<h5>Встроенные программы</h5>
 <ul id="load-builtin"></ul>
-<h6>Сохраненные программы</h6>
-<ul id="load-list"></ul>
-</div>
 
-<div id="save-dialog" class="hidden">
-<h5>Загрузить</h5>
-<ul id="save-list"></ul>
-<input type="button" value="Новая программа" onclick="emulator.saveNew()">
+<h6>Сохраненные программы</h6>
+<ul id="load-list"><li><i>недоступно</i></li></ul>
+
+<input type="button" value="Создать" onclick="emulator.saveNew()">
+<input type="button" class="right" value="Закрыть" onclick="emulator.closeProgramDialog()">
 </div>
 
 </div>

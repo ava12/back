@@ -332,25 +332,28 @@ BackMachine.prototype.step = function () {
 	return this.status
 }
 
-BackMachine.prototype.tick = function () {
+BackMachine.prototype.tick = function (batchSize) {
 	if (!this.isRunning) return
 
-	this.step()
-	if (this.status == BackMachineStatuses.manual) {
-		var t = this
-		setTimeout(function () {
-			t.tick()
-		}, 0)
-		return
+	for (var batch = batchSize; batch > 0; batch--) {
+		this.step()
+		if (!this.status == BackMachineStatuses.manual) {
+			this.isRunning = false
+			if (this.callback) {
+				this.callback.call(this.context, this.status, this)
+			}
+			return
+		}
 	}
 
-	this.isRunning = false
-	if (this.callback) {
-		this.callback.call(this.context, this.status, this)
-	}
+	var t = this
+	setTimeout(function () {
+		t.tick(batchSize)
+	}, 0)
 }
 
-BackMachine.prototype.run = function (callback, context) {
+BackMachine.prototype.run = function (callback, context, batchSize) {
+	if (!batchSize) batchSize = 1
 	if (callback) {
 		this.callback = callback
 		this.context = context
@@ -358,7 +361,7 @@ BackMachine.prototype.run = function (callback, context) {
 	this.isRunning = true
 	var t = this
 	setTimeout(function () {
-		t.tick()
+		t.tick(batchSize)
 	}, 0)
 }
 

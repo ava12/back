@@ -155,7 +155,7 @@ BackEmulatorDebug.prototype.run = function () {
 
 	this.highlightLine(null)
 	this.isRunning = true
-	this.machine.run(this.callback, this)
+	this.machine.run(this.callback, this, 100)
 }
 
 BackEmulatorDebug.prototype.stop = function () {
@@ -169,39 +169,41 @@ BackEmulatorDebug.prototype.reset = function () {
 }
 
 BackEmulatorDebug.prototype.checkStepOut = function (line, depth) {
-	return (!depth || depth < this.targetDepth)
+	return (line == this.targetLine || (depth && depth >= this.targetDepth))
 }
 
 BackEmulatorDebug.prototype.checkStepIn = function (line, depth) {
-	return (line != this.targetLine)
+	return (line === this.targetLine)
 }
 
 BackEmulatorDebug.prototype.checkStepOver = function (line, depth) {
-	return (line != this.targetLine && depth <= this.targetDepth)
+	return (line === this.targetLine || depth > this.targetDepth)
 }
 
-BackEmulatorDebug.prototype.handleStep = function (checkFunction) {
+BackEmulatorDebug.prototype.handleStep = function (checkFunction, batchSize) {
 	if (!this.isRunning) {
 		this.callback()
 		return
 	}
 
-	var status = this.machine.step()
-	var line = this.getLineForAddress(this.machine.ip)
-	var depth = this.machine.callStack.length
-	this.isRunning = (checkFunction.call(this, line, depth) && status < BackMachineStatuses.input)
-	if (!this.isRunning) {
-		this.callback()
-		return
+	for (var batch = batchSize; batch > 0; batch--) {
+		var status = this.machine.step()
+		var line = this.getLineForAddress(this.machine.ip)
+		var depth = this.machine.callStack.length
+		this.isRunning = (checkFunction.call(this, line, depth) && status == BackMachineStatuses.manual)
+		if (!this.isRunning) {
+			this.callback()
+			return
+		}
 	}
 
 	var t = this
 	setTimeout(function () {
-		t.handleStep(checkFunction)
+		t.handleStep(checkFunction, batchSize)
 	}, 0)
 }
 
-BackEmulatorDebug.prototype.step = function (checkFunction) {
+BackEmulatorDebug.prototype.step = function (checkFunction, batchSize) {
 	if (this.isRunning) {
 		this.stop()
 		return
@@ -210,9 +212,22 @@ BackEmulatorDebug.prototype.step = function (checkFunction) {
 	this.targetLine = this.currentLine
 	this.targetDepth = this.machine.callStack.length
 
+	if (!batchSize) batchSize = 1
 	var t = this
 	this.isRunning = true
 	setTimeout(function () {
-		t.handleStep(checkFunction)
+		t.handleStep(checkFunction, batchSize)
 	}, 0)
+}
+
+BackEmulatorDebug.prototype.stepOut = function () {
+	this.step(this.checkStepOut)
+}
+
+BackEmulatorDebug.prototype.stepIn = function () {
+	this.step(this.checkStepIn)
+}
+
+BackEmulatorDebug.prototype.stepOver = function () {
+	this.step(this.checkStepOver)
 }

@@ -5,12 +5,6 @@ function BackEmulatorIo(dom) {
 	this.pos = 0
 }
 
-BackEmulatorIo.prototype.escape = {
-	'&': '&amp;',
-	'<': '&lt;',
-	'>': '&gt;'
-}
-
 BackEmulatorIo.prototype.setInput = function (input) {
 	this.input = String(input)
 }
@@ -19,7 +13,7 @@ BackEmulatorIo.prototype.reset = function (input) {
 	if (input != undefined) this.setInput(input)
 	this.pos = 0
 	this.output = ''
-	this.dom.innerHTML = ''
+	this.dom.value = ''
 }
 
 BackEmulatorIo.prototype.read = function () {
@@ -32,9 +26,11 @@ BackEmulatorIo.prototype.read = function () {
 }
 
 BackEmulatorIo.prototype.write = function (value) {
-	value = String.fromCharCode(value)
-	if (this.escape[value]) value = this.escape[value]
-	this.output += value
-	this.dom.innerHTML = this.output
+	this.output += String.fromCharCode(value)
+	if (value < 32) this.dump()
 	return true
+}
+
+BackEmulatorIo.prototype.dump = function () {
+	this.dom.value = this.output
 }

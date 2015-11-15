@@ -1,6 +1,12 @@
 function BackEmulator()  {
 	this.dom = {}
-	var dom = {
+	this.stateDom = []
+	this.io = new BackEmulatorIo(this.dom.output)
+	this.machine = null
+	this.address = 0
+	this.debug = null
+
+	var items = {
 		input: 'input',
 		output: 'output',
 		ip: 'ip',
@@ -14,19 +20,34 @@ function BackEmulator()  {
 		source: 'source',
 		debugFrame: 'debug-frame',
 		debugContainer: 'debug-container',
-		debug: 'debug'
+		debug: 'debug',
+		dialog: 'dialog',
+		loadBuiltin: 'load-builtin',
+		loadList: 'load-list'
 	}
-	for (var i in dom) {
-		this.dom[i] = document.getElementById(dom[i])
+	for (var i in items) {
+		this.dom[i] = document.getElementById(items[i])
 	}
-	dom = ['ip', 'cpu', 'ops', 'calls', 'ram']
-	this.stateDom = []
-	for (i in dom) this.stateDom[i] = this.dom[dom[i]]
 
-	this.io = new BackEmulatorIo(this.dom.output)
-	this.machine = null
-	this.address = 0
-	this.debug = null
+	items = ['ip', 'cpu', 'ops', 'calls', 'ram']
+	for (i in items) this.stateDom[i] = this.dom[items[i]]
+
+	items = []
+	for (i = 0; i < BackEmulatorPrograms.names.length; i++) {
+		items.push('<li><a>' + this.escape(BackEmulatorPrograms.names[i]) + '</a></li>')
+	}
+	this.dom.loadBuiltin.innerHTML = items.join('\r\n')
+	items = this.dom.loadBuiltin.childNodes
+	var t = this
+	var handler = function () {
+		t.loadBuiltin(t.unescape(this.innerHTML))
+	}
+	for (i = 0; i < items.length; i++) items[i].childNodes[0].onclick = handler
+	items = null
+
+	document.body.onkeypress = function (event) {
+		return t.onKeyPress(event)
+	}
 }
 
 BackEmulator.prototype.messages = {
@@ -36,6 +57,22 @@ BackEmulator.prototype.messages = {
 	7: 'стек операндов переполнен',
 	8: 'стек возврата пуст',
 	9: 'стек возврата переполнен'
+}
+
+BackEmulator.prototype.escape = function (text) {
+	return text.
+		replace('&', '&amp;').
+		replace('<', '&lt;').
+		replace('>', '&gt;').
+		replace('"', '&quot;')
+}
+
+BackEmulator.prototype.unescape = function (html) {
+	return html.
+		replace('&quot;', '"').
+		replace('&gt;', '>').
+		replace('&lt;', '<').
+		replace('&amp;', '&')
 }
 
 BackEmulator.prototype.hex = function (value) {
@@ -99,13 +136,11 @@ BackEmulator.prototype.hideMachineState = function () {
 	for (var i in this.stateDom) this.stateDom[i].innerHTML = ''
 }
 
-BackEmulator.prototype.saveSource = function () { alert('Еще не реализовано') }
-BackEmulator.prototype.loadSource = function () { alert('Еще не реализовано') }
-
 BackEmulator.prototype.showSource = function () {
 	if (this.machine.isRunning) this.machine.stop()
 	this.dom.debugFrame.setAttribute('class', 'hidden')
 	this.dom.sourceFrame.setAttribute('class', '')
+	this.debug = null
 }
 
 BackEmulator.prototype.showDebug = function () {
@@ -128,6 +163,7 @@ BackEmulator.prototype.showDebug = function () {
 
 BackEmulator.prototype.callback = function () {
 	this.showMachineState()
+	this.io.dump()
 	var message = this.messages[this.machine.status]
 	if (message) alert(message)
 }
@@ -146,4 +182,88 @@ BackEmulator.prototype.reset = function () {
 	this.debug.reset()
 	this.io.reset(this.dom.input.value)
 	this.showMachineState()
+}
+
+BackEmulator.prototype.stepOut = function () {
+	this.hideMachineState()
+	this.debug.stepOut()
+}
+
+BackEmulator.prototype.stepIn = function () {
+	this.hideMachineState()
+	this.debug.stepIn()
+}
+
+BackEmulator.prototype.stepOver = function () {
+	this.hideMachineState()
+	this.debug.stepOver()
+}
+
+BackEmulator.prototype.onKeyPress = function (event) {
+	if (!this.debug || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return true
+
+	switch (event.key) {
+		case '6': this.stepOut(); break
+		case '7': this.stepIn(); break
+		case '8': this.stepOver(); break
+		case '9': this.run(); break
+		case '0': this.reset(); break
+		default: return true
+	}
+	return false
+}
+
+BackEmulator.prototype.refreshProgramList = function () {
+	var names = BackEmulatorStorage.listNames()
+	var items = []
+	for (var i = 0; i < names.length; i++) {
+		items.push('<li><a>' + this.escape(names[i]) + '</a>' +
+			'<input type="button" value="Сохранить"><input type="button" value="Удалить">')
+	}
+	this.dom.loadList.innerHTML = items.join('\r\n')
+
+	var t = this
+
+	var loadHandler = function () {
+		t.loadProgram(t.unescape(this.innerHTML))
+	}
+
+	var saveHandler = function () {
+		t.saveProgram(t.unescape(this.parentNode.childNodes[0].innerHTML))
+	}
+
+	var deleteHandler = function () {
+		t.deleteProgram(t.unescape(this.parentNode.childNodes[0].innerHTML))
+	}
+
+	items = this.dom.loadList.childNodes
+	for (i = 0; i < items.length; i++) {
+		var children = items[i].childNodes
+		children[0].onclick = loadHandler
+		children[1].onclick = saveHandler
+		children[2].onclick = deleteHandler
+	}
+}
+
+BackEmulator.prototype.showProgramDialog = function () {
+	if (BackEmulatorStorage.available) this.refreshProgramList()
+	this.dom.dialog.setAttribute('class', '')
+}
+
+BackEmulator.prototype.closeProgramDialog = function () {
+	this.dom.dialog.setAttribute('class', 'hidden')
+}
+
+BackEmulator.prototype.loadBuiltin = function (name) {
+	this.dom.source.value = BackEmulatorPrograms.get(name)
+	this.closeProgramDialog()
+}
+
+BackEmulator.prototype.loadProgram = function (name) {
+}
+
+BackEmulator.prototype.saveProgram = function (name) {
+}
+
+BackEmulator.prototype.deleteProgram = function (name) {
 }
