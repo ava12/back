@@ -53,7 +53,7 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 
 #dialog-pos { position: fixed; width: 1px; height: 1px; left: 50%; top: 50%; }
 #dialog-pos>div {
-	position: absolute; box-sizing: border-box; width: 40em; height: 20em; left: -20em; top: -10em;
+	position: absolute; box-sizing: border-box; width: 40em; height: 30em; left: -20em; top: -15em;
 	background: #fff; border: 2px solid; opacity: 1; z-index: 1000; overflow: auto; padding: 1em;
 }
 
@@ -76,7 +76,6 @@ h6 { font-size: 1em; margin: 0.5em 0px; }
 IP: <span id="ip">0000</span>
 <span id="cpu"></span>
 <pre>0:!! 1:. 2:^ 3:^^ 4:@ 5:= 6.&lt; 7.> 8:&lt;&lt; 9:>> a:? b:?? c:x d:xx e:xxxx f:$</pre>
-
 </div>
 
 <div class="dump"><h6 title="стек операндов">СО</h6><span id="ops"></span></div>
@@ -92,10 +91,7 @@ IP: <span id="ip">0000</span>
 <input type="button" value="Программы" onclick="emulator.showProgramDialog()">
 <input type="button" class="right" value="Отладка" onclick="emulator.showDebug()">
 <br>
-<textarea id="source">0 "Hello world!"
-\:: putc $ =(0) :end :put @(0) ? ^^
-\:: put .> putc
-\:: end</textarea>
+<textarea id="source"></textarea>
 </div>
 
 <div id="debug-frame" class="hidden">
@@ -130,7 +126,7 @@ IP: <span id="ip">0000</span>
 <h6>Сохраненные программы</h6>
 <ul id="load-list"><li><i>недоступно</i></li></ul>
 
-<input type="button" value="Создать" onclick="emulator.saveNew()">
+<input type="button" value="Создать" onclick="emulator.saveNewProgram()">
 <input type="button" class="right" value="Закрыть" onclick="emulator.closeProgramDialog()">
 </div>
 

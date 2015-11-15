@@ -4,7 +4,7 @@ BackEmulatorStorage = {
 	available: !!window.localStorage,
 
 	name2key: function (name) {
-		name = name.replace(/^\s+|\s+$/)
+		name = name.replace(/^\s+|\s+$/g, '')
 		if (!name.length) throw 'пустое имя программы'
 		return this.keyPrefix + name
 	},
@@ -34,7 +34,6 @@ BackEmulatorStorage = {
 
 	get: function (name) {
 		return this.list()[this.name2key(name)]
-
 	},
 
 	save: function (list) {
@@ -60,7 +59,7 @@ BackEmulatorStorage = {
 	remove: function (name) {
 		var list = this.list()
 		var key = this.name2key(name)
-		if (!(name in list)) return
+		if (!(key in list)) return
 
 		delete list[key]
 		this.save(list)

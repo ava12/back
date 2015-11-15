@@ -260,10 +260,43 @@ BackEmulator.prototype.loadBuiltin = function (name) {
 }
 
 BackEmulator.prototype.loadProgram = function (name) {
+	var program = BackEmulatorStorage.get(name)
+	if (program == undefined) this.refreshProgramList()
+	else {
+		this.dom.source.value = program
+		this.closeProgramDialog()
+	}
 }
 
 BackEmulator.prototype.saveProgram = function (name) {
+	var newName = prompt('Новое имя программы:', name)
+	if (newName) {
+		try {
+			BackEmulatorStorage.replace(name, newName, this.dom.source.value)
+		}
+		catch (e) {
+			alert(e)
+		}
+	}
+	this.refreshProgramList()
 }
 
 BackEmulator.prototype.deleteProgram = function (name) {
+	if (!confirm('Удалить программу "' + name + '"?')) return
+
+	BackEmulatorStorage.remove(name)
+	this.refreshProgramList()
+}
+
+BackEmulator.prototype.saveNewProgram = function () {
+	var name = prompt('Имя программы:')
+	if (name) {
+		try {
+			BackEmulatorStorage.add(name, this.dom.source.value)
+		}
+		catch (e) {
+			alert(e)
+		}
+	}
+	this.refreshProgramList()
 }
