@@ -176,7 +176,7 @@ BackEmulatorDebug.prototype.checkStepOut = function (line, depth) {
 	return (line == this.targetLine || (depth && depth >= this.targetDepth))
 }
 
-BackEmulatorDebug.prototype.checkStepIn = function (line, depth) {
+BackEmulatorDebug.prototype.checkStepIn = function (line) {
 	return (line === this.targetLine)
 }
 
@@ -222,6 +222,10 @@ BackEmulatorDebug.prototype.step = function (checkFunction, batchSize) {
 	setTimeout(function () {
 		t.handleStep(checkFunction, batchSize)
 	}, 0)
+}
+
+BackEmulatorDebug.prototype.singleStep = function () {
+	this.step(function () {return false})
 }
 
 BackEmulatorDebug.prototype.stepOut = function () {

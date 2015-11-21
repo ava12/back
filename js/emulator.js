@@ -187,6 +187,11 @@ BackEmulator.prototype.reset = function () {
 	this.showMachineState()
 }
 
+BackEmulator.prototype.singleStep = function () {
+	this.hideMachineState()
+	this.debug.singleStep()
+}
+
 BackEmulator.prototype.stepOut = function () {
 	this.hideMachineState()
 	this.debug.stepOut()
@@ -206,6 +211,7 @@ BackEmulator.prototype.onKeyPress = function (event) {
 	if (!this.debug || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return true
 
 	switch (event.key) {
+		case '5': this.singleStep(); break
 		case '6': this.stepOut(); break
 		case '7': this.stepIn(); break
 		case '8': this.stepOver(); break

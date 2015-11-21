@@ -286,7 +286,7 @@ BackMachine.prototype.step = function () {
 				value = this.operandStack.pop()
 				if (opcode == BackMachineOpcodes.test) value = (mask ? value2 : value)
 				else value = (value2 & mask) | (value & (~mask))
-				this.operandStack.push(value)
+				this.operandStack.push(value & 0xffff)
 				this.events |= BackMachineEvents.opStack
 			}
 		break
