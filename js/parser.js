@@ -334,7 +334,7 @@ BackParser.prototype.setName = function (name, type, value, token) {
 }
 
 BackParser.prototype.defineMacro = function () {
-	var token = this.fetch(BackTokenTypes.name)
+	var token = this.fetch(BackTokenTypes.name)[0]
 	var name = token.data
 	var macro = []
 	this.setName(name, this.types.macro, macro, token)

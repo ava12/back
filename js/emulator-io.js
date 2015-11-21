@@ -6,7 +6,7 @@ function BackEmulatorIo(dom) {
 }
 
 BackEmulatorIo.prototype.setInput = function (input) {
-	this.input = String(input)
+	this.input = String(input).replace(/\r\n?/g, '\n')
 }
 
 BackEmulatorIo.prototype.reset = function (input) {

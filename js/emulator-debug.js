@@ -33,11 +33,12 @@ function BackEmulatorDebug(machine, source, view, content, callback, context) {
 
 	this.viewHeight = this.view.clientHeight
 	this.contentHeight = this.content.clientHeight
-	this.lineHeight = Math.floor(this.viewHeight / this.lines.length)
+	this.lineHeight = Math.floor(this.contentHeight / this.lines.length)
 	this.currentLine = null
 	this.isRunning = false
 	this.targetLine = null
 	this.targetDepth = null
+	this.scrollToLine(1)
 }
 
 BackEmulatorDebug.prototype.getLines = function (debugInfo) {
@@ -53,7 +54,9 @@ BackEmulatorDebug.prototype.makeSourceHtml = function (source, breakLines) {
 	source = source.split('\n')
 	for (var i = 0; i < source.length; i++) {
 		var className = ((i + 1) in breakLines ? ' class="break-on"' : '')
-		source[i] = '<tr' + className + '><th>' + (i + 1) + '<th> <td>' + source[i].replace(/\s+$/, '')
+		source[i] = '<tr' + className + '><th>' + (i + 1) + '<th> <th>' +
+			(this.lines[i + 1] == undefined ? '' : Number(this.lines[i + 1]).toString(16)) +
+			'<td>' + source[i].replace(/\s+$/, '')
 	}
 	return source.join('\r\n')
 }
@@ -61,7 +64,7 @@ BackEmulatorDebug.prototype.makeSourceHtml = function (source, breakLines) {
 BackEmulatorDebug.prototype.scrollToLine = function (line) {
 	var linePos = (line - 1) * this.lineHeight
 	var viewPos = this.view.scrollTop
-	var isVisible = (linePos >= viewPos && (linePos + this.lineHeight) <= (viewPos + this.contentHeight))
+	var isVisible = (linePos >= viewPos && ((linePos + this.lineHeight) <= (viewPos + this.viewHeight)))
 	if (!isVisible) {
 		viewPos = linePos - this.lineHeight
 		if (viewPos < 0) {
@@ -136,6 +139,7 @@ BackEmulatorDebug.prototype.highlightLine = function (line) {
 	if (line) {
 		row = this.content.tBodies[0].childNodes[line - 1]
 		row.setAttribute('class', 'current ' + row.className)
+		this.scrollToLine(line)
 	}
 }
 

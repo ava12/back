@@ -1,7 +1,7 @@
 function BackEmulator()  {
 	this.dom = {}
 	this.stateDom = []
-	this.io = new BackEmulatorIo(this.dom.output)
+	this.io = null
 	this.machine = null
 	this.address = 0
 	this.debug = null
@@ -45,6 +45,8 @@ function BackEmulator()  {
 	for (i = 0; i < items.length; i++) items[i].childNodes[0].onclick = handler
 	items = null
 
+	this.io = new BackEmulatorIo(this.dom.output)
+
 	document.body.onkeypress = function (event) {
 		return t.onKeyPress(event)
 	}
@@ -76,7 +78,7 @@ BackEmulator.prototype.unescape = function (html) {
 }
 
 BackEmulator.prototype.hex = function (value) {
-	return ('000' + value.toString(16)).substr(-4)
+	return ('000' + (value & 65535).toString(16)).substr(-4)
 }
 
 BackEmulator.prototype.updateInput = function () {
@@ -148,15 +150,16 @@ BackEmulator.prototype.showDebug = function () {
 	this.machine = new BackMachine(this.io, this.io)
 
 	try {
+		this.dom.sourceFrame.setAttribute('class', 'hidden')
+		this.dom.debugFrame.setAttribute('class', '')
 		this.debug = new BackEmulatorDebug(this.machine, source,
 			this.dom.debugContainer, this.dom.debug, this.callback, this)
 	} catch (e) {
+		console.log(e)
 		alert(e.message)
 		return
 	}
 
-	this.dom.sourceFrame.setAttribute('class', 'hidden')
-	this.dom.debugFrame.setAttribute('class', '')
 	this.io.reset(this.dom.input.value)
 	this.showMachineState()
 }
@@ -218,7 +221,7 @@ BackEmulator.prototype.refreshProgramList = function () {
 	var items = []
 	for (var i = 0; i < names.length; i++) {
 		items.push('<li><a>' + this.escape(names[i]) + '</a>' +
-			'<input type="button" value="Сохранить"><input type="button" value="Удалить">')
+			'<button title="Сохранить">*</button><button title="Удалить">x</button>')
 	}
 	this.dom.loadList.innerHTML = items.join('\r\n')
 
@@ -256,6 +259,7 @@ BackEmulator.prototype.closeProgramDialog = function () {
 
 BackEmulator.prototype.loadBuiltin = function (name) {
 	this.dom.source.value = BackEmulatorPrograms.get(name)
+	this.dom.sourceName.innerHTML = this.escape(name)
 	this.closeProgramDialog()
 }
 
@@ -264,6 +268,7 @@ BackEmulator.prototype.loadProgram = function (name) {
 	if (program == undefined) this.refreshProgramList()
 	else {
 		this.dom.source.value = program
+		this.dom.sourceName.innerHTML = this.escape(name)
 		this.closeProgramDialog()
 	}
 }
@@ -273,6 +278,7 @@ BackEmulator.prototype.saveProgram = function (name) {
 	if (newName) {
 		try {
 			BackEmulatorStorage.replace(name, newName, this.dom.source.value)
+			this.dom.sourceName.innerHTML = this.escape(name)
 		}
 		catch (e) {
 			alert(e)
@@ -293,6 +299,7 @@ BackEmulator.prototype.saveNewProgram = function () {
 	if (name) {
 		try {
 			BackEmulatorStorage.add(name, this.dom.source.value)
+			this.dom.sourceName.innerHTML = this.escape(name)
 		}
 		catch (e) {
 			alert(e)

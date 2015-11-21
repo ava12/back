@@ -13,13 +13,14 @@
 <script src="js/emulator.js"></script>
 
 <style>
-.right { position: absolute; right: 1.5em; }
 .hidden, .hidden * { display: none !important; }
 h6 { margin: 0.5em 0px; }
 input[type=button] { height: 1.8em; line-height: 1.5em; margin: 0.25em 0px 0px 1%; }
 
 #frame { width: 60em; padding: 0px; margin: 0px auto; vertical-align: top; }
-#frame>div { display: inline-block; box-sizing: border-box; padding: 0.5em; margin: 0px; vertical-align: top; }
+#frame>div, #debug-frame>div {
+	display: inline-block; box-sizing: border-box; padding: 0.5em; margin: 0px; vertical-align: top;
+}
 #output { border: 1px solid; }
 
 .io { width: 49%; height: 10em; overflow: auto; font-family: monospace; }
@@ -29,7 +30,8 @@ input[type=button] { height: 1.8em; line-height: 1.5em; margin: 0.25em 0px 0px 1
 div.dump { width: 5em; height: 25em; text-align: center; }
 div.dump span { font-family: monospace; line-height: 1.3em; }
 
-#source-frame, #debug-frame { width: 44em; height: 25em; position: relative; }
+#source-frame, #debug-frame { width: 59em; height: 25em; }
+#debug-panel { width: 42em; height: 25em; position: relative; }
 #source { width: 98%; height: 90%; margin: 0.5em 0px; }
 #source-name { display: inline-block; width: 20em; }
 
@@ -37,12 +39,14 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 #debug { font-family: monospace; white-space: pre; min-width: 100%; }
 #debug tr { cursor: pointer; }
 #debug tr:hover, #debug tr:hover th { background: #ddf !important; }
-#debug th { width: 4em; background: #eee; text-align: right; font-weight: normal; }
-#debug th+th { width: 1em; text-align: center; color: #eee; }
+#debug th { background: #eee; font-weight: normal; }
+#debug th:nth-of-type(1) { width: 4em; text-align: right; }
+#debug th:nth-of-type(2) { width: 1em; text-align: center; color: #eee; }
+#debug th:nth-of-type(3) { text-align: right; padding-right: 0.2ex; }
 #debug tr.break-on td { background: #fdd; }
-#debug tr.break-on th+th { color: #f33; content: "*"; }
+#debug tr.break-on th:nth-of-type(2) { color: #f33; content: "*"; }
 #debug tr.break-off td { background: #cfc; }
-#debug tr.break-off th+th { color: #060; content: "*"; }
+#debug tr.break-off th:nth-of-type(2) { color: #060; content: "*"; }
 #debug tr.current td { background: #36c; color: #fff; }
 #debug td { padding-left: 0.5em; }
 
@@ -52,6 +56,7 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 }
 
 #dialog-pos { position: fixed; width: 1px; height: 1px; left: 50%; top: 50%; }
+#dialog-pos .close-button { position: absolute; left: 21em; top: -17em; z-index: 2000; }
 #dialog-pos>div {
 	position: absolute; box-sizing: border-box; width: 40em; height: 30em; left: -20em; top: -15em;
 	background: #fff; border: 2px solid; opacity: 1; z-index: 1000; overflow: auto; padding: 1em;
@@ -63,7 +68,7 @@ div.dump span { font-family: monospace; line-height: 1.3em; }
 h5 { font-size: 1.2em; margin: 0.5em 0px; }
 h6 { font-size: 1em; margin: 0.5em 0px; }
 
-#debug-frame button[title] { font-weight: bold; }
+button { font-weight: bold; margin: 0px 1ex; }
 </style>
 </head>
 
@@ -72,10 +77,38 @@ h6 { font-size: 1em; margin: 0.5em 0px; }
 <textarea id="input" class="io" onchange="emulator.updateInput()"></textarea>
 <textarea id="output" class="io"></textarea>
 
+<div id="source-frame">
+<input type="button" value="Отладка" onclick="emulator.showDebug()">
+&nbsp;&nbsp;
+<span id="source-name"></span>
+<input type="button" value="Программы" onclick="emulator.showProgramDialog()">
+<br>
+<textarea id="source"></textarea>
+</div>
+
+<div id="debug-frame" class="hidden">
+
 <div class="cpu">
 IP: <span id="ip">0000</span>
 <span id="cpu"></span>
 <pre>0:!! 1:. 2:^ 3:^^ 4:@ 5:= 6.&lt; 7.> 8:&lt;&lt; 9:>> a:? b:?? c:x d:xx e:xxxx f:$</pre>
+</div>
+
+<div id="debug-panel">
+<input type="button" value="Код" onclick="emulator.showSource()">
+&nbsp;&nbsp;
+<button title="Выйти из подпрограммы (6)" onclick="emulator.stepOut()">&#x21b1;</button>
+<button title="Шаг/вход в подпрограмму (7)" onclick="emulator.stepIn()">&#x21b4;</button>
+<button title="Шаг без входа в подпрограмму (8)" onclick="emulator.stepOver()">&#x21b7;</button>
+&nbsp;&nbsp;
+<button title="Пуск/стоп (9)" onclick="emulator.run()">&#x2023;</button>
+&nbsp;&nbsp;
+<button title="Сброс (0)" onclick="emulator.reset()">&#x21bb;</button>
+
+<div id="debug-container">
+<table id="debug" border="0" cellspacing="0">
+</table>
+</div>
 </div>
 
 <div class="dump"><h6 title="стек операндов">СО</h6><span id="ops"></span></div>
@@ -84,30 +117,6 @@ IP: <span id="ip">0000</span>
 <div class="dump">
 <input id="address" type="button" value="0000" title="адрес памяти" onclick="emulator.selectAddress()"><br>
 <span id="ram"></span>
-</div>
-
-<div id="source-frame">
-<span id="source-name"></span>
-<input type="button" value="Программы" onclick="emulator.showProgramDialog()">
-<input type="button" class="right" value="Отладка" onclick="emulator.showDebug()">
-<br>
-<textarea id="source"></textarea>
-</div>
-
-<div id="debug-frame" class="hidden">
-<button title="Выйти из подпрограммы (6)" onclick="emulator.stepOut()">&#x21b1;</button>
-<button title="Шаг/вход в подпрограмму (7)" onclick="emulator.stepIn()">&#x21b4;</button>
-<button title="Шаг без входа в подпрограмму (8)" onclick="emulator.stepOver()">&#x21b7;</button>
-&nbsp;&nbsp;
-<button title="Пуск/стоп (9)" onclick="emulator.run()">&#x2023;</button>
-&nbsp;&nbsp;
-<button title="Сброс (0)" onclick="emulator.reset()">&#x21bb;</button>
-<input type="button" class="right" value="Код" onclick="emulator.showSource()">
-
-<div id="debug-container">
-<table id="debug" border="0" cellspacing="0">
-</table>
-</div>
 </div>
 
 </div>
@@ -127,8 +136,9 @@ IP: <span id="ip">0000</span>
 <ul id="load-list"><li><i>недоступно</i></li></ul>
 
 <input type="button" value="Создать" onclick="emulator.saveNewProgram()">
-<input type="button" class="right" value="Закрыть" onclick="emulator.closeProgramDialog()">
 </div>
+
+<button class="close-button" onclick="emulator.closeProgramDialog()" title="Закрыть">x</button>
 
 </div>
 </div>
