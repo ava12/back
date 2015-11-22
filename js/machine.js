@@ -187,7 +187,7 @@ BackMachine.prototype.step = function () {
 	this.ip = (this.ip + 1) & 65535
 	var operands = this.operandStack.length
 	var calls = this.callStack.length
-	var address, value, length, value2, mask
+	var address, value, length, value0, mask
 
 	switch (opcode) {
 		case BackMachineOpcodes.hlt:
@@ -281,11 +281,11 @@ BackMachine.prototype.step = function () {
 		case BackMachineOpcodes.bt:
 			if (operands < 3) this.status = BackMachineStatuses.operandStackEmpty
 			else {
-				mask = this.operandStack.pop()
-				value2 = this.operandStack.pop()
+				value0 = this.operandStack.pop()
 				value = this.operandStack.pop()
-				if (opcode == BackMachineOpcodes.test) value = (mask ? value2 : value)
-				else value = (value2 & mask) | (value & (~mask))
+				mask = this.operandStack.pop()
+				if (opcode == BackMachineOpcodes.test) value = (mask ? value : value0)
+				else value = (value & mask) | (value0 & (~mask))
 				this.operandStack.push(value & 0xffff)
 				this.events |= BackMachineEvents.opStack
 			}

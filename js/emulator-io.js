@@ -33,4 +33,5 @@ BackEmulatorIo.prototype.write = function (value) {
 
 BackEmulatorIo.prototype.dump = function () {
 	this.dom.value = this.output
+	this.dom.scrollTop += 1000
 }

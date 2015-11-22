@@ -33,12 +33,12 @@ var BackTestCases = [
 		status: BackMachineStatuses.callStackFull},
 
 	{	name: 'побитовый выбор',
-		source: '?? (0xf0 (0xaa 0xcc))',
+		source: '?? (0xaa (0xf0 0xcc))',
 		ip: 17,
 		operands: [0xca]},
 
 	{	name: 'ввод/вывод',
-		source: '20 13 .< $ 0 = ? ^^ 0 @ .> 0 ^^ .<',
+		source: '.< $ 0 = 13 20 ? ^^ 0 @ .> 0 ^^ .<',
 		input: 'привет',
 		ip: 20,
 		status: BackMachineStatuses.input,

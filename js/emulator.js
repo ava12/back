@@ -36,7 +36,7 @@ function BackEmulator()  {
 	for (i = 0; i < BackEmulatorPrograms.names.length; i++) {
 		items.push('<li><a>' + this.escape(BackEmulatorPrograms.names[i]) + '</a></li>')
 	}
-	this.dom.loadBuiltin.innerHTML = items.join('\r\n')
+	this.dom.loadBuiltin.innerHTML = items.join('')
 	items = this.dom.loadBuiltin.childNodes
 	var t = this
 	var handler = function () {
@@ -172,7 +172,10 @@ BackEmulator.prototype.callback = function () {
 }
 
 BackEmulator.prototype.run = function () {
-	if (this.debug.isRunning) this.debug.stop()
+	if (this.debug.isRunning) {
+		this.debug.stop()
+		this.showMachineState()
+	}
 	else {
 		this.hideMachineState()
 		this.debug.run()

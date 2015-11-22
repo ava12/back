@@ -33,21 +33,21 @@ F $
 
 
 \: & \\(a, b) (a&b)
-  1 = 0 = 0 0 @ 1 @ ?? .
+  0 ?? .
 \: | \\(a, b) (a|b)
-  0 = 1 0 @ ?? .
+  =(0) 1 @(0) ?? .
 \: ~ \\(a) (~a)
-  0 = -1 0 0 @ ?? .
+  0 -1 ?? .
 \% drop \\(a) ()
   0 = .
-\: xor \\(a, b) (a^b)
-  1 = $ ~ 1 @ ?? .
+\: xor \\(a, b) (a xor b)
+  $ =(0) ~ @(0) ?? .
 
 \: + \\(a, b) (a + b)
   3= $ 2= 3@ xor
-  &(2@ 3@) << $ 2=
-  ?(:+_exit :+ @(2)) ^^
-  \:: +_exit
+  &(2@ 3@) << $
+  ?(:+ :+:exit) ^^
+  \:: +:exit
   $ =
 .
 
@@ -56,55 +56,3 @@ F $
 \: _ ~ ++ .
 \: - _ + .
 
-
-99 bottles:
-
-\= CntL 6
-\= CntH 7
-
-main
-
-\: & \\(a, b) (a&b)
-  1 = 0 = 0 0 @ 1 @ ?? .
-\: | \\(a, b) (a|b)
-  0 = 1 0 @ ?? .
-\: ~ \\(a) (~a)
-  0 = -1 0 0 @ ?? .
-\% drop \\(a) ()
-  0 = .
-\: xor \\(a, b) (a^b)
-  1 = $ ~ 1 @ ?? .
-
-\: + \\(a, b) (a + b)
-  3= $ 2= 3@ xor
-  &(2@ 3@) << $ 2=
-  ?(:+:exit :+ @(2)) ^^
-  \:: +:exit
-  $ =
-.
-
-\: ++ 1 + .
-\: -- -1 + .
-\: _ ~ ++ .
-\: - _ + .
-\% cmp - .
-
-\: print
-  $ =(0) :print:end :print:put @(0) ? ^^
-  \:: print:put .> :print ^^
-  \:: print:end drop .
-
-\: print-cnt
-  :print-cnt:ones :print-cnt:tens cmp(@(:CntH) "0") ? ^^
-  \:: print-cnt:tens @(:CntH) .>
-  \:: print-cnt:ones :print-cnt:end :print-cnt:plural @(:CntL) $ .> print(0 " bottle")
-  -- @(:CntH) xor ? ^^
-  \:: print-cnt:plural "s" .>
-  \:: print-cnt:end
-.
-
-\:: main
-
-"99" =(:CntH) =(:CntL)
-
-print-cnt
