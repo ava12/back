@@ -130,8 +130,8 @@ BackEmulator.prototype.dumpCpu = function () {
 BackEmulator.prototype.showMachineState = function () {
 	this.dumpCpu()
 	this.dumpRam()
-	this.dumpStack(this.dom.ops, this.machine.operandStack)
-	this.dumpStack(this.dom.calls, this.machine.callStack)
+	this.dumpStack(this.dom.ops, this.machine.operandStack.slice(-16))
+	this.dumpStack(this.dom.calls, this.machine.callStack.slice(-16))
 }
 
 BackEmulator.prototype.hideMachineState = function () {

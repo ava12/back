@@ -72,7 +72,7 @@ BackParserQueue.prototype.next = function () {
 
 
 function BackParser(source) {
-	this.names = {
+	this.names = { // [тип, данные]
 		':!!':  [this.types.op, BackMachineOpcodes.hlt],
 		':.':   [this.types.op, BackMachineOpcodes.ret],
 		':^':   [this.types.op, BackMachineOpcodes.call],
@@ -87,6 +87,7 @@ function BackParser(source) {
 		':??':  [this.types.op, BackMachineOpcodes.bt],
 		':$':   [this.types.op, BackMachineOpcodes.dup]
 	}
+	this.localNames = this.names
 
 	this.lexer = new BackLexer(source)
 	this.queue = new BackParserQueue(this.lexer)
@@ -94,12 +95,11 @@ function BackParser(source) {
 	this.breakPoints = {}
 	this.breakLines = {}
 	this.debug = [] // [строка: [адреса]]
-	this.labels = {} // {имя: [адреса]}
-	this.subs = {} // {имя: [адреса]}
 	this.program = null
 }
 
 BackParser.prototype.types = {
+	none: 'none', // [тип, {labels: [], subs: []}]
 	op: 'op', // [тип, код (0 - 15)]
 	num: 'num', // [тип, значение]
 	func: 'func', // [тип, адрес]
@@ -122,10 +122,13 @@ BackParser.prototype.meta = {
 	macro: '\\%',
 	func: '\\:',
 	sub: '\\::',
-	breakPoint: '\\#'
+	breakPoint: '\\#',
+	beginLocal: '\\{',
+	endLocal: '\\}'
 }
 
 BackParser.prototype.newException = function (message, token) {
+	if (!token) token = new BackToken()
 	return new BackParserException(message, token.line, token.pos)
 }
 
@@ -182,18 +185,30 @@ BackParser.prototype.emitStringToken = function (token) {
 	}
 }
 
-BackParser.prototype.emitLabelToken = function (token) {
-	var key = ':' + token.data
-	var entry = this.names[key]
+BackParser.prototype.getName = function (name, local) {
+	var key = ':' + name
+	var entry = this.localNames[key]
 	if (!entry) {
-		if (!this.labels[key]) this.labels[key] = []
-		this.labels[key].push(this.code.length + 1)
+		if (!local) entry = this.names[key]
+		if (!entry) {
+			entry = [this.types.none, {labels: [], subs: []}]
+			this.localNames[key] = entry
+		}
+	}
+
+	return entry
+}
+
+BackParser.prototype.emitLabelToken = function (token) {
+	var entry = this.getName(token.data)
+	if (entry[0] == this.types.none) {
+		entry[1].labels.push(this.code.length + 1)
 		this.emit([BackMachineOpcodes.dw, 0, 0, 0, 0], token.line)
 		return
 	}
 
 	switch (entry[0]) {
-	case this.types.num:
+		case this.types.num:
 		case this.types.func:
 		case this.types.sub:
 			this.emitNumber(entry[1], token.line)
@@ -210,11 +225,9 @@ BackParser.prototype.emitLabelToken = function (token) {
 }
 
 BackParser.prototype.emitNameToken = function (token) {
-	var key = ':' + token.data
-	var entry = this.names[key]
-	if (!entry) {
-		if (!this.subs[key]) this.subs[key] = []
-		this.subs[key].push(this.code.length + 1)
+	var entry = this.getName(token.data)
+	if (entry[0] == this.types.none) {
+		entry[1].subs.push(this.code.length + 1)
 		this.emit([BackMachineOpcodes.dw, 0, 0, 0, 0, BackMachineOpcodes.hlt], token.line)
 		return
 	}
@@ -225,7 +238,7 @@ BackParser.prototype.emitNameToken = function (token) {
 		break
 
 		case this.types.num:
-			throw this.newException('имя константы не может использоваться как вызов или переход на подпрограмму', token)
+			this.emitNumber(entry[1], token.line)
 		break
 
 		case this.types.func:
@@ -237,6 +250,7 @@ BackParser.prototype.emitNameToken = function (token) {
 
 		case this.types.macro:
 			for (var i = 0; i < entry[1].length; i++) {
+				entry[1][i].line = token.line
 				this.emitToken(entry[1][i])
 			}
 		break
@@ -276,6 +290,21 @@ BackParser.prototype.emitMetaToken = function (token) {
 			this.setName(tokens[0].data, type, this.code.length, tokens[0])
 		break
 
+		case this.meta.beginLocal:
+			if (this.localNames === this.names) this.localNames = {}
+			else throw this.newException('локальная область видимости уже задана')
+		break
+
+		case this.meta.endLocal:
+			if (this.localNames === this.names) {
+				throw this.newException('локальная область видимости не задана')
+			}
+
+			this.checkUnresolvedNames()
+
+			this.localNames = this.names
+		break
+
 		default:
 			throw this.newException('неизвестная директива: ' + token.data, token)
 	}
@@ -302,25 +331,24 @@ BackParser.prototype.fetch = function (types) {
 }
 
 BackParser.prototype.setName = function (name, type, value, token) {
-	var key = ':' + name
-	if (key in this.names) throw this.newException('имя ' + name + ' уже задано', token)
+	var entry = this.getName(name, true)
+	if (entry[0] != this.types.none) {
+		throw this.newException('имя ' + name + ' уже задано', token)
+	}
 
-	this.names[key] = [type, value]
+	this.localNames[':' + name] = [type, value]
 	if (type != this.types.num && type != this.types.func && type != this.types.sub) return
 
 	var patch = [(value & 0xf000) >> 12, (value & 0xf00) >> 8, (value & 0xf0) >> 4, value & 0xf]
 	for (i = 0; i < 4; i++) patch[i] = this.opChars.charAt(patch[i])
-	var addr = this.labels[key]
+	var addr = entry[1].labels
 	var i, j
-	if (addr) {
-		for (i = 0; i < addr.length; i++) {
-			for (j = 0; j < 4; j++) this.code[addr[i] + j] = patch[j]
-		}
-		delete this.labels[key]
+	for (i = 0; i < addr.length; i++) {
+		for (j = 0; j < 4; j++) this.code[addr[i] + j] = patch[j]
 	}
 
-	addr = this.subs[key]
-	if (!addr) return
+	addr = entry[1].subs
+	if (!addr.length) return
 
 	if (type == this.types.num) {
 		throw this.newException('имя ' + name + ' уже используется как вызов или переход на подпрограмму', token)
@@ -330,7 +358,6 @@ BackParser.prototype.setName = function (name, type, value, token) {
 	for (i = 0; i < addr.length; i++) {
 		for (j = 0; j < 5; j++) this.code[addr[i] + j] = patch[j]
 	}
-	delete this.subs[key]
 }
 
 BackParser.prototype.defineMacro = function () {
@@ -360,11 +387,10 @@ BackParser.prototype.defineMacro = function () {
 
 BackParser.prototype.checkUnresolvedNames = function () {
 	var unresolved = []
-	for (var key in this.labels) {
-		delete this.subs[key]
-		unresolved.push(key.substr(1))
+	for (var key in this.localNames) {
+		var entry = this.localNames[key]
+		if (entry[0] == this.types.none) unresolved.push(key.substr(1))
 	}
-	for (key in this.subs) unresolved.push(key.substr(1))
 	if (unresolved.length) {
 		throw new BackParserException('не определены имена: ' + unresolved.join(', '))
 	}

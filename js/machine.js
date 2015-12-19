@@ -23,8 +23,8 @@ function BackMachine(input, output, program) {
 BackMachineOpcodes = {
 	hlt: 0,
 	ret: 1,
-	call: 2,
-	jmp: 3,
+	jmp: 2,
+	call: 3,
 	ld: 4,
 	st: 5,
 	ins: 6,
@@ -314,8 +314,9 @@ BackMachine.prototype.step = function () {
 
 		case BackMachineOpcodes.dup:
 			if (operands >= 255) this.status = BackMachineStatuses.operandStackFull
+			else if (!operands) this.status = BackMachineStatuses.operandStackEmpty
 			else {
-				this.operandStack.push(operands ? this.operandStack[operands - 1] : 0)
+				this.operandStack.push(this.operandStack[operands - 1])
 				this.events |= BackMachineEvents.opStack
 			}
 		break

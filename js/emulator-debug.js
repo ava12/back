@@ -216,7 +216,7 @@ BackEmulatorDebug.prototype.step = function (checkFunction, batchSize) {
 	this.targetLine = this.currentLine
 	this.targetDepth = this.machine.callStack.length
 
-	if (!batchSize) batchSize = 1
+	if (!batchSize) batchSize = 100
 	var t = this
 	this.isRunning = true
 	setTimeout(function () {
