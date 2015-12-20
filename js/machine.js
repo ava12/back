@@ -107,13 +107,13 @@ BackMachine.prototype.toggleBreakPoint = function (index, on) {
 
 BackMachine.prototype.getMemory = function (address, length) {
 	var result
+	address &= 0xffff
 	if (!length || length < 0) {
 		result = this.memory[address]
 		return (result ? result : 0)
 	}
 
 	result = new Array(length)
-	address &= 0xffff
 	for (var i = 0; i < length; i++) {
 		var word = this.memory[address]
 		result[i] = (word ? word : 0)

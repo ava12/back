@@ -35,10 +35,11 @@ main
 
 \= FirstAllocAddr 32
 
+\:: end0 $ =
 \:: end .
 
 \: & \* (a, b) (a&b) *\ 0 ?? .
-\: | \* (a, b) (a|b) *\ =(0) 1 @(0) ?? .
+\: | \* (a, b) (a|b) *\ =(0) -1 @(0) ?? .
 \: ~ \* (a) (~a) *\ 0 -1 ?? .
 \% drop \* (a) () *\ 0 = .
 \: xor \* (a, b) (a xor b) *\ $ =(0) ~ @(0) ?? .
@@ -46,13 +47,11 @@ main
 \: + \\(a, b) (a + b)
   2= $ 1= 2@ xor
   &(1@ 2@) << $
-  ?(:+ :+_exit) ^^
-\:: +_exit
-  $ =
+  ?(:+ :end0) ^^
 .
 
 \: ++ 1 + .
-\: -- -1 ++ .
+\: -- -1 + .
 \: _ ~ ++ .
 \: - _ + .
 
@@ -60,25 +59,27 @@ main
   =(0) =(1) @(0) @(1)
 .
 
+
 \: init
   FirstAllocAddr =(AllocPtr)
 .
 
 \: print
-  $ ?(:print_put :print_end) ^^
-  \:: print_put .> :print ^^
-  \:: print_end $ =
-.
+\{
+  $ ?(:_put :end0) ^^
+  \:: _put .> :print ^^
+\} .
 
 \: alloc \\ (размер) (адрес)
+\{
   @(AllocPtr) $ =(alloc_CurrentPtr)
   + $ =(AllocPtr)
-  &(0x8000) ?(:alloc_error :alloc_end) ^^
-\:: alloc_error
+  &(0x8000) ?(:_error :_end) ^^
+\:: _error
   print(0 "Переполнение кучи") !! \\ а вдруг?
-\:: alloc_end
+\:: _end
   @(alloc_CurrentPtr)
-.
+\} .
 
 \: alloc-state \\ () (адрес)
   alloc(StateSize)
@@ -90,71 +91,76 @@ main
 
 
 \: find-state \\ (имя) (адрес)
-  $ ?(:find-state_find :end) ^^
+\{
+  $ ?(:_find :end) ^^
 
-\:: find-state_find
+\:: _find
   =(find-state_Name)
   @(FirstStatePtr)
-  $ ?(:find-state_check :find-state_first) ^^
+  $ ?(:_check :_first) ^^
 
-\:: find-state_first \\ (0)
+\:: _first \\ (0)
   $ =
   @(:find-state_Name) alloc-state $ =(FirstStatePtr) =(+(State.Name)) @(FirstStatePtr)
   .
 
-\:: find-state_check \\ (адрес)
+\:: _check \\ (адрес)
   $ =(find-state_CurrentPtr)
-  $ @(+(State.Name)) xor (@(find-state_Name)) ?(:find-state_next :end) ^^
+  $ @(+(State.Name)) xor (@(find-state_Name)) ?(:_next :end) ^^
 
-\:: find-state_next \\ (адрес)
+\:: _next \\ (адрес)
   @(+(State.NextPtr))
-  $ ?(:find-state_check :find-state_none) ^^
+  $ ?(:_check :_none) ^^
 
-\:: find-state_none \\ (0)
+\:: _none \\ (0)
   $ =
   alloc-state
   $ @(find-state_CurrentPtr) +(State.NextPtr) =
   $ =(find-state_CurrentPtr)
   @(find-state_Name) @(find-state_CurrentPtr) +(State.Name) =
-.
+\} .
 
 
 \: fix-separator \\ (символ) (символ|0)
-  $ xor(@(read-rule_Separator)) ?(:end :fix-separator_nul) ^^
+\{
+  $ xor(@(read-rule_Separator)) ?(:end :_nul) ^^
 
-\:: fix-separator_nul
+\:: _nul
   drop 0
-.
+\} .
 
 
 \: add-rule \\ (адрес состояния, адрес правила) ()
+\{
   =(add-rule_RulePtr) $ =(add-rule_StatePtr)
-  +(State.LastRulePtr) $ @ $ ?(:add-rule_append :add-rule_first) ^^
+  +(State.LastRulePtr) $ @ $ ?(:_append :_first) ^^
 
-\:: add-rule_append \\ (адрес указателя на последнее правило, указатель на последнее правило)
+\:: _append \\ (адрес указателя на последнее правило, указатель на последнее правило)
   +(Rule.NextPtr) @(add-rule_RulePtr) swap =
   @(add-rule_RulePtr) swap = .
 
-\:: add-rule_first \\ (адрес указателя на последнее правило, указатель на последнее правило)
+\:: _first \\ (адрес указателя на последнее правило, указатель на последнее правило)
   drop @(add-rule_RulePtr) swap =
   @(add-rule_RulePtr) =(@(add-rule_StatePtr) +(State.FirstRulePtr))
-.
+\} .
 
 
 \: read-symbols \\ (адрес буфера) ()
+\{
   $ .< fix-separator
-  $ ?(:read-symbols_read :read-symbols_end) ^^
+  $ ?(:_read :_end) ^^
 
-\:: read-symbols_read \\ (текущий адрес, текущий адрес, символ)
+\:: _read \\ (текущий адрес, текущий адрес, символ)
   swap = ++ :read-symbols ^^
 
-\:: read-symbols_end
+\:: _end
   drop drop
   ++ =(AllocPtr)
-.
+\} .
 
 
 \: read-rule \\ (имя) ()
+\{
   find-state \\ (адрес состояния)
   alloc-rule $ =(read-rule_RulePtr) \\ (адрес состояния, адрес правила)
   add-rule \\ ()
@@ -163,102 +169,138 @@ main
   $ +(Rule.Symbols) read-symbols
   $ .< fix-separator swap +(Rule.NewSymbol) =
   $ .< fix-separator find-state swap +(Rule.NewStatePtr) = $
-  .< $ xor("+") ?(:read-rule_not-forward :read-rule_forward) ^^
+  .< $ xor("+") ?(:_not-forward :_forward) ^^
 
-\:: read-rule_forward \\ (адрес правила, символ)
-  drop 1 read-rule_move
+\:: _forward \\ (адрес правила, символ)
+  drop 1 _move
 
-\:: read-rule_not-forward \\ (адрес правила, символ)
+\:: _not-forward \\ (адрес правила, символ)
   xor("-") ?(0 -1)
 
-\:: read-rule_move \\ (адрес правила, направление)
+\:: _move \\ (адрес правила, направление)
   swap +(Rule.Move) =
   drop
 
-\:: read-rule_find-end
-  .< xor(10) ?(:read-rule_find-end :end) ^^
-.
+\:: _find-end
+  .< xor(10) ?(:_find-end :end) ^^
+\} .
 
 \: read-rules
-  .< $ xor(10) ?(:read-rules_read :read-rules_end) ^^
+\{
+  .< $ xor(10) ?(:_read :_end) ^^
 
-\:: read-rules_read
+\:: _read
   read-rule :read-rules ^^
 
-\:: read-rules_end
+\:: _end
   drop
   @(FirstStatePtr) =(StatePtr)
-.
+\} .
 
 
 \: read-tape
+\{
   0x8000 $ =(TapePos) $ " " swap =
 
-\:: read-tape_cycle
-  $ .< $ ?(:read-tape_read :read-tape_end) ^^
+\:: _cycle
+  $ .< $ ?(:_read :_end) ^^
 
-\:: read-tape_read \\ (адрес, адрес, символ)
+\:: _read \\ (адрес, адрес, символ)
   swap = ++
-  read-tape_cycle
+  _cycle
 
-\:: read-tape_end \\ (адрес, адрес, 0)
+\:: _end \\ (адрес, адрес, 0)
   = drop
-.
+\} .
 
 
 \: find-rule \\ (символ) (адрес правила)
+\{
   =(find-rule_Symbol)
   @(StatePtr) +(State.FirstRulePtr) @
 
-\:: find-rule_cycle
+\:: _cycle
   $ =(find-rule_RulePtr)
-  $ ?(:find-rule_check :find-rule_error) ^^
+  $ ?(:_check :_error) ^^
 
-\:: find-rule_check
+\:: _check
   +(Rule.Symbols)
 
-\:: find-rule_check-cycle
+\:: _check-cycle
   $ @
-  $ ?(:find-rule_compare :find-rule_next) ^^
+  $ ?(:_compare :_next) ^^
 
-\::find-rule_compare
-  xor(@(find-rule_Symbol)) ?(:find-rule_next-symbol :find-rule_end) ^^
+\:: _compare
+  xor(@(find-rule_Symbol)) ?(:_next-symbol :_end) ^^
 
-\:: find-rule_next-symbol
-  ++ find-rule_check-cycle
+\:: _next-symbol
+  ++ _check-cycle
 
-\:: find-rule_next
+\:: _next
   $ = drop
-  @(find-rule_RulePtr) +(Rule.NextPtr) @ find-rule_cycle
+  @(find-rule_RulePtr) +(Rule.NextPtr) @ _cycle
 
-\:: find-rule_error
+\:: _error
   print(0 "Не найдено правило") $ = !!
 
-\:: find-rule_end
+\:: _end
   drop @(find-rule_RulePtr)
-.
+\} .
 
 
 \: move-head \\ (направление) ()
-  $ ?(:move-head_move :move-head_end) ^^
+\{
+  $ ?(:_move :_end) ^^
 
-\:: move-head_move
-  @(@(TapePos)) + $ =(TapePos)
-  $ @ ?(:move-head_end :move-head_fix) ^^
+\:: _move
+  @(TapePos) + |(0x8000) $ =(TapePos)
+  $ @ ?(:_end :_fix) ^^
 
-\:: move-head_fix
+\:: _fix
+  " " swap = .
 
-\:: move-head_end
-  $ =
-.
+\:: _end
+  drop
+\} .
 
 \: run
-  @(@(TapePos))
+\{
+  find-rule(@(@(TapePos)))
+  $ +(Rule.NewSymbol) @ $ ?(:_write :_skip) ^^
 
-.
+\:: _write
+  @(TapePos) = _move
+
+\:: _skip
+  $ =
+
+\:: _move
+  $ +(Rule.Move) @ move-head
+  +(Rule.NewStatePtr) @ $ ?(:_continue :end0) ^^
+
+\:: _continue
+  =(StatePtr) :run ^^
+\}
+
+\: print-tape
+\{
+  print(0 10 "Лента:")
+  0x8000
+
+\:: _head-cycle
+  $ @ ?(:_head-next :_print-cycle) ^^
+\:: _head-next
+  -- _head-cycle
+
+\:: _print-cycle
+  ++ $ @ $ ?(:_print :end0) ^^
+\:: _print
+  .> _print-cycle
+\}
 
 \:: main
 
 read-rules
 read-tape
 run
+print-tape

@@ -213,6 +213,9 @@ BackEmulator.prototype.stepOver = function () {
 BackEmulator.prototype.onKeyPress = function (event) {
 	if (!this.debug || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return true
 
+	var target = event.target
+	if (target && (target.tagName == 'INPUT' || target.tagName == 'TEXTAREA')) return true
+
 	switch (event.key) {
 		case '5': this.singleStep(); break
 		case '6': this.stepOut(); break
