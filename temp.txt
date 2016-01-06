@@ -1,306 +1,51 @@
-init
-main
-
-\= AllocPtr 7
-\= FirstStatePtr 6
-\= StatePtr 5
-\= TapePos 4
-
-\= State.Name 0
-\= State.FirstRulePtr 1
-\= State.LastRulePtr 2
-\= State.NextPtr 3
-\= StateSize 4
-
-\= Rule.NextPtr 0
-\= Rule.NewSymbol 1
-\= Rule.Move 2
-\= Rule.NewStatePtr 3
-\= Rule.Symbols 4
-\= RuleSize 4
-
-\= add-rule_StatePtr 8
-\= add-rule_RulePtr 9
-
-\= find-state_Name 10
-\= find-state_CurrentPtr 11
-
-\= alloc_CurrentPtr 12
-
-\= read-rule_RulePtr 13
-\= read-rule_Separator 14
-
-\= find-rule_Symbol 15
-\= find-rule_RulePtr 16
-
-\= FirstAllocAddr 32
-
-\:: end0 $ =
-\:: end .
-
-\: & \* (a, b) (a&b) *\ 0 ?? .
-\: | \* (a, b) (a|b) *\ =(0) -1 @(0) ?? .
-\: ~ \* (a) (~a) *\ 0 -1 ?? .
-\% drop \* (a) () *\ 0 = .
-\: xor \* (a, b) (a xor b) *\ $ =(0) ~ @(0) ?? .
-
-\: + \\(a, b) (a + b)
-  2= $ 1= 2@ xor
-  &(1@ 2@) << $
-  ?(:+ :end0) ^^
-.
-
-\: ++ 1 + .
-\: -- -1 + .
-\: _ ~ ++ .
-\: - _ + .
-
-\: swap \\ (a b) (b a)
-  =(0) =(1) @(0) @(1)
-.
-
-
-\: init
-  FirstAllocAddr =(AllocPtr)
-.
-
-\: print
-\{
-  $ ?(:_put :end0) ^^
-  \:: _put .> :print ^^
-\} .
-
-\: alloc \\ (размер) (адрес)
-\{
-  @(AllocPtr) $ =(alloc_CurrentPtr)
-  + $ =(AllocPtr)
-  &(0x8000) ?(:_error :_end) ^^
-\:: _error
-  print(0 "Переполнение кучи") !! \\ а вдруг?
-\:: _end
-  @(alloc_CurrentPtr)
-\} .
-
-\: alloc-state \\ () (адрес)
-  alloc(StateSize)
-.
-
-\: alloc-rule \\ () (адрес)
-  alloc(RuleSize)
-.
-
-
-\: find-state \\ (имя) (адрес)
-\{
-  $ ?(:_find :end) ^^
-
-\:: _find
-  =(find-state_Name)
-  @(FirstStatePtr)
-  $ ?(:_check :_first) ^^
-
-\:: _first \\ (0)
-  $ =
-  @(:find-state_Name) alloc-state $ =(FirstStatePtr) =(+(State.Name)) @(FirstStatePtr)
-  .
-
-\:: _check \\ (адрес)
-  $ =(find-state_CurrentPtr)
-  $ @(+(State.Name)) xor (@(find-state_Name)) ?(:_next :end) ^^
-
-\:: _next \\ (адрес)
-  @(+(State.NextPtr))
-  $ ?(:_check :_none) ^^
-
-\:: _none \\ (0)
-  $ =
-  alloc-state
-  $ @(find-state_CurrentPtr) +(State.NextPtr) =
-  $ =(find-state_CurrentPtr)
-  @(find-state_Name) @(find-state_CurrentPtr) +(State.Name) =
-\} .
-
-
-\: fix-separator \\ (символ) (символ|0)
-\{
-  $ xor(@(read-rule_Separator)) ?(:end :_nul) ^^
-
-\:: _nul
-  drop 0
-\} .
-
-
-\: add-rule \\ (адрес состояния, адрес правила) ()
-\{
-  =(add-rule_RulePtr) $ =(add-rule_StatePtr)
-  +(State.LastRulePtr) $ @ $ ?(:_append :_first) ^^
-
-\:: _append \\ (адрес указателя на последнее правило, указатель на последнее правило)
-  +(Rule.NextPtr) @(add-rule_RulePtr) swap =
-  @(add-rule_RulePtr) swap = .
-
-\:: _first \\ (адрес указателя на последнее правило, указатель на последнее правило)
-  drop @(add-rule_RulePtr) swap =
-  @(add-rule_RulePtr) =(@(add-rule_StatePtr) +(State.FirstRulePtr))
-\} .
-
-
-\: read-symbols \\ (адрес буфера) ()
-\{
-  $ .< fix-separator
-  $ ?(:_read :_end) ^^
-
-\:: _read \\ (текущий адрес, текущий адрес, символ)
-  swap = ++ :read-symbols ^^
-
-\:: _end
-  drop drop
-  ++ =(AllocPtr)
-\} .
-
-
-\: read-rule \\ (имя) ()
-\{
-  find-state \\ (адрес состояния)
-  alloc-rule $ =(read-rule_RulePtr) \\ (адрес состояния, адрес правила)
-  add-rule \\ ()
-  .< =(read-rule_Separator) \\ ()
-  @(read-rule_RulePtr)
-  $ +(Rule.Symbols) read-symbols
-  $ .< fix-separator swap +(Rule.NewSymbol) =
-  $ .< fix-separator find-state swap +(Rule.NewStatePtr) = $
-  .< $ xor("+") ?(:_not-forward :_forward) ^^
-
-\:: _forward \\ (адрес правила, символ)
-  drop 1 _move
-
-\:: _not-forward \\ (адрес правила, символ)
-  xor("-") ?(0 -1)
-
-\:: _move \\ (адрес правила, направление)
-  swap +(Rule.Move) =
-  drop
-
-\:: _find-end
-  .< xor(10) ?(:_find-end :end) ^^
-\} .
-
-\: read-rules
-\{
-  .< $ xor(10) ?(:_read :_end) ^^
-
-\:: _read
-  read-rule :read-rules ^^
-
-\:: _end
-  drop
-  @(FirstStatePtr) =(StatePtr)
-\} .
-
-
-\: read-tape
-\{
-  0x8000 $ =(TapePos) $ " " swap =
-
-\:: _cycle
-  $ .< $ ?(:_read :_end) ^^
-
-\:: _read \\ (адрес, адрес, символ)
-  swap = ++
-  _cycle
-
-\:: _end \\ (адрес, адрес, 0)
-  = drop
-\} .
-
-
-\: find-rule \\ (символ) (адрес правила)
-\{
-  =(find-rule_Symbol)
-  @(StatePtr) +(State.FirstRulePtr) @
-
-\:: _cycle
-  $ =(find-rule_RulePtr)
-  $ ?(:_check :_error) ^^
-
-\:: _check
-  +(Rule.Symbols)
-
-\:: _check-cycle
-  $ @
-  $ ?(:_compare :_next) ^^
-
-\:: _compare
-  xor(@(find-rule_Symbol)) ?(:_next-symbol :_end) ^^
-
-\:: _next-symbol
-  ++ _check-cycle
-
-\:: _next
-  $ = drop
-  @(find-rule_RulePtr) +(Rule.NextPtr) @ _cycle
-
-\:: _error
-  print(0 "Не найдено правило") $ = !!
-
-\:: _end
-  drop @(find-rule_RulePtr)
-\} .
-
-
-\: move-head \\ (направление) ()
-\{
-  $ ?(:_move :_end) ^^
-
-\:: _move
-  @(TapePos) + |(0x8000) $ =(TapePos)
-  $ @ ?(:_end :_fix) ^^
-
-\:: _fix
-  " " swap = .
-
-\:: _end
-  drop
-\} .
-
-\: run
-\{
-  find-rule(@(@(TapePos)))
-  $ +(Rule.NewSymbol) @ $ ?(:_write :_skip) ^^
-
-\:: _write
-  @(TapePos) = _move
-
-\:: _skip
-  $ =
-
-\:: _move
-  $ +(Rule.Move) @ move-head
-  +(Rule.NewStatePtr) @ $ ?(:_continue :end0) ^^
-
-\:: _continue
-  =(StatePtr) :run ^^
-\}
-
-\: print-tape
-\{
-  print(0 10 "Лента:")
-  0x8000
-
-\:: _head-cycle
-  $ @ ?(:_head-next :_print-cycle) ^^
-\:: _head-next
-  -- _head-cycle
-
-\:: _print-cycle
-  ++ $ @ $ ?(:_print :end0) ^^
-\:: _print
-  .> _print-cycle
-\}
-
-\:: main
-
-read-rules
-read-tape
-run
-print-tape
+Машина Тьюринга:
+
+Запись правила:
+
+имя состояния
+разделитель
+список допустимых символов
+разделитель
+новый символ (разделитель: не писать)
+новое состояние (разделитель: стоп)
+перемещение (-: назад, +: вперед, иначе: на месте)
+комментарий
+перевод строки
+
+
+Структуры данных:
+
+Состояние:
+
+1 имя
+1 адрес первого правила (или 0)
+1 адрес последнего правила (или 0)
+1 адрес следующего определенного состояния (или 0)
+
+Правило:
+
+1 адрес следующего правила (0 для последнего)
+1 символ для записи (0 - не менять)
+1 перемещение (-1, 0, 1)
+1 адрес следующего состояния (0 для конечного)
+n допустимые символы
+1 0
+
+
+Умножение чисел в унарной записи:
+
+a-*--z-  если нет неотмеченных разрядов множителя 1...
+a-1-xb+  помечаем разряд множителя 1
+b-1--b+  пропускаем разряды множителя 1
+b-*--c+  пропускаем знак умножения
+c-=--r-  если нет неотмеченных разрядов множителя 2...
+c-1-yd+  помечаем разряд множителя 2
+d-1=--d+ пропускаем разряды множителя 2, знак равенства и разряды результата
+d- -1e-  если найдено пустое место - пишем разряд результата
+e-1=--e- пропускаем разряды результата, знак равенства и разряды множителя 2
+e-y--c+  находим последний отмеченный разряд множителя 2
+r-y-1r-  снимаем метки с множителя 2
+r-1*--r- пропускаем знак умножения и неотмеченные разряды множителя 1
+r-x--a+  если найден отмеченный разряд множителя 1...
+z-x-1z-  снимаем метки с множителя 1
+z- ---+  если найдено начало ленты - стоп

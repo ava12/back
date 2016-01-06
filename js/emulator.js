@@ -290,7 +290,7 @@ BackEmulator.prototype.saveProgram = function (name) {
 	if (newName) {
 		try {
 			BackEmulatorStorage.replace(name, newName, this.dom.source.value)
-			this.dom.sourceName.innerHTML = this.escape(name)
+			this.dom.sourceName.innerHTML = this.escape(newName)
 		}
 		catch (e) {
 			alert(e)
