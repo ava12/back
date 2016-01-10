@@ -89,11 +89,11 @@ var BackEmulatorPrograms = {
 		'  print(0 "Не найдено правило") $ = !!\n\n\\:: _end\n  drop @(find-rule_RulePtr)\n\\} .\n\n\n' +
 		'\\: move-head \\\\ (направление) ()\n\\{\n  $ ?(:_move :_end) ^^\n\n\\:: _move\n' +
 		'  @(TapePos) + |(0x8000) $ =(TapePos)\n  $ @ ?(:_end :_fix) ^^\n\n\\:: _fix\n' +
-		'  " " swap = .\n\n\\:: _end\n  drop\n\\} .\n\n\\: run\n\\{\n  find-rule(@(@(TapePos)))\n' +
-		'  $ +(Rule.NewSymbol) @ $ ?(:_write :_skip) ^^\n\n\\:: _write\n  @(TapePos) = _move\n\n' +
-		'\\:: _skip\n  $ =\n\n\\:: _move\n  $ +(Rule.Move) @ move-head\n' +
+		'  " " swap = .\n\n\\:: _end\n  drop\n\\} .\n\n\\: run\n\\{\n  StatePtr @ @ .>\n' +
+		'  find-rule(@(@(TapePos)))\n  $ +(Rule.NewSymbol) @ $ ?(:_write :_skip) ^^\n\n\\:: _write\n' +
+		'  @(TapePos) = _move\n\n\\:: _skip\n  $ =\n\n\\:: _move\n  $ +(Rule.Move) @ move-head\n' +
 		'  +(Rule.NewStatePtr) @ $ ?(:_continue :end0) ^^\n\n\\:: _continue\n' +
-		'  =(StatePtr) :run ^^\n\\}\n\n\\: print-tape\n\\{\n  print(0 10 "Лента:")\n  0x8000\n\n' +
+		'  =(StatePtr) :run ^^\n\\}\n\n\\: print-tape\n\\{\n  print(0 10 "Лента:" 10)\n  0x8000\n\n' +
 		'\\:: _head-cycle\n  $ @ ?(:_head-next :_print-cycle) ^^\n\\:: _head-next\n' +
 		'  -- |(0x8000) _head-cycle\n\n\\:: _print-cycle\n  ++ |(0x8000) $ @ $ ?(:_print :_end) ^^\n' +
 		'\\:: _print\n  .> _print-cycle\n\\:: _end\n  =\n\\} .\n\n' +
